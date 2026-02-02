@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<robot name="space_kinova_template">
+
+  <!-- central cube base (from your SpaceRobot.urdf) -->
+  <link name="base_link">
+    <inertial>
+      <origin xyz="0 0 0"/>
+      <mass value="65.0"/>
+      <inertia ixx="8" iyy="8" izz="8" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <box size="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="blue">
+        <color rgba="0.2 0.2 0.8 1"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0"/>
+      <geometry>
+        <box size="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <!-- fixed mount to your Kinova base (replace kinova_base_link with the prefixed root link) -->
+  <joint name="base_to_kinova" type="fixed">
+    <parent link="base_link"/>
+    <child link="kinova_base_link"/>
+    <origin xyz="0 0 0.5" rpy="0 0 0"/>
+  </joint>
+
+  <!-- paste your Kinova URDF content here (with all names prefixed to avoid collisions) -->
+
+</robot>
