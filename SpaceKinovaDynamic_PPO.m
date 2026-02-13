@@ -15,7 +15,7 @@
 %   - cfg.urdfFile
 %   - cfg.eeBodyName (optional)
 %
-% Autor: ChatGPT (Template zum direkten Übernehmen)
+% Konfiguriert fuer Kinova Gen3 7-DOF (Spezifikationen aus ros_kortex URDF)
 
 clc; clear; close all;
 rng(0,'twister');
@@ -30,8 +30,8 @@ cfg.urdfFile   = "SpaceKinova.urdf";   % <- deine generierte URDF
 cfg.mdl        = "SpaceKinova";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
 cfg.agentBlk   = cfg.mdl + "/RL_Agent";
 
-% Falls leer: nimmt den letzten Body als EE
-cfg.eeBodyName = "";                  % z.B. "ee_link" oder "" für auto
+% Kinova Gen3 End-Effector Link (mit Prefix aus make_spacekinova_urdf)
+cfg.eeBodyName = "kinova_end_effector_link";
 
 % ---- Freiheitsgrade ----
 cfg.nJ = 7;
@@ -39,7 +39,7 @@ cfg.nJ = 7;
 % ---- Simulations- & Agenten-Zeit ----
 cfg.T        = 8.5;     % Episodendauer [s]
 cfg.Ts       = 0.01;    % Simulations-FixedStep [s]
-cfg.Ts_agent = 0.1;     % Agent SampleTime [s] (muss zu RL-Block passen!)
+cfg.Ts_agent = 0.025;   % Agent SampleTime [s] = 40 Hz (Kinova Gen3 High-Level Servo Rate)
 
 % ---- Referenztrajektorie (Kreis) ----
 cfg.r      = 0.4;                         % Radius [m]
@@ -47,16 +47,28 @@ cfg.center = [4.5 - cfg.r, 0.0, 0.0];     % Mittelpunkt
 cfg.omega  = pi/cfg.T;                    % Winkelgeschwindigkeit
 cfg.zConst = 0.0;                         % konstante z-Höhe
 
-% ---- Sicherheits-/Spec-Parameter ----
-cfg.d_safe    = 0.02;   % Mindestabstand [m] (Collision Monitor)
-cfg.dq_max    = 0.8;    % |dq_cmd| max (für Actionspec + Simulink Sättigung)
-cfg.tau_max   = 30;     % optional: falls du im Simulink einen inneren Velocity-Regler hast (Torque Saturation)
-cfg.dt_agent  = 0.05;   % nur falls du dt_agent im Modell benutzt (sonst ignorieren)
+% ---- Kinova Gen3 7-DOF Gelenkspezifikationen (aus ros_kortex URDF) ----
+% Positionslimits: J1,J3,J7 continuous -> Software-Limit 2*pi
+%                  J2: +/-2.41 rad, J4: +/-2.66 rad, J5: +/-2.23 rad, J6: +/-2.01 rad
+cfg.qLim_lower = [-2*pi; -2.41; -2*pi; -2.66; -2.23; -2.01; -2*pi];  % [rad]
+cfg.qLim_upper = [ 2*pi;  2.41;  2*pi;  2.66;  2.23;  2.01;  2*pi];  % [rad]
 
-% Joint Limits (als Beispiel; bitte an Kinova anpassen!)
-% - Für Kinova Gen3 sind echte Limits typischerweise größer/anders; setz das passend zu deinem URDF/Robot.
-cfg.qLim_abs  = pi;     % rad (Fallback-Limit, falls du keine individuellen Grenzen nutzt)
-cfg.dqLim_abs = 2.0;    % rad/s (für Observation clipping)
+% Geschwindigkeitslimits (aus URDF)
+% Grosse Aktuatoren J1-J4: 1.3963 rad/s, Kleine Aktuatoren J5-J7: 1.2218 rad/s
+cfg.dqLim = [1.3963; 1.3963; 1.3963; 1.3963; 1.2218; 1.2218; 1.2218]; % [rad/s]
+
+% Action-Limits: 70% der echten Limits (Sicherheitsfaktor)
+cfg.safetyFactor = 0.7;
+cfg.dq_max = cfg.safetyFactor * cfg.dqLim;
+% -> [0.9774; 0.9774; 0.9774; 0.9774; 0.8553; 0.8553; 0.8553] rad/s
+
+% Drehmomentlimits (Nominal/Continuous)
+% Grosse Aktuatoren J1-J4: 32 Nm, Kleine Aktuatoren J5-J7: 13 Nm
+cfg.tau_max = [32; 32; 32; 32; 13; 13; 13]; % [Nm]
+
+% Sicherheits-Parameter
+cfg.d_safe   = 0.02;          % Mindestabstand [m] (Collision Monitor)
+cfg.dt_agent = cfg.Ts_agent;  % synchron mit Agent SampleTime
 
 % Observation Limits für Basis/Fehler wie in deinem ursprünglichen Script
 cfg.ePLim   = 0.5;      % [m]
@@ -76,15 +88,14 @@ cfg.saveTag = "ppo_spacekinova_vel";
 %% =========================
 % 1) Parameter in Base Workspace (für Simulink-Blöcke)
 % =========================
-assignin('base','d_safe',   cfg.d_safe);
-assignin('base','dq_max',   cfg.dq_max);
-assignin('base','tau_max',  cfg.tau_max);
-assignin('base','dt_agent', cfg.dt_agent);
-assignin('base','nJ',       cfg.nJ);
-
-% Optional: wenn dein Modell mit q_lim arbeitet
-assignin('base','qLim_abs',  cfg.qLim_abs);
-assignin('base','dqLim_abs', cfg.dqLim_abs);
+assignin('base','d_safe',     cfg.d_safe);
+assignin('base','dq_max',     cfg.dq_max);      % 7x1 Vektor
+assignin('base','tau_max',    cfg.tau_max);      % 7x1 Vektor
+assignin('base','dt_agent',   cfg.dt_agent);
+assignin('base','nJ',         cfg.nJ);
+assignin('base','qLim_lower', cfg.qLim_lower);  % 7x1 Vektor
+assignin('base','qLim_upper', cfg.qLim_upper);  % 7x1 Vektor
+assignin('base','dqLim',      cfg.dqLim);        % 7x1 Vektor
 
 %% =========================
 % 2) Referenztrajektorie erzeugen (EE_ref, EE_vref)
@@ -166,36 +177,41 @@ obsDim = 3 + 3 + 2*nJ + 6 + 3;
 obsLow = [ ...
     -cfg.ePLim   * ones(3,1); ...
     -cfg.eVLim   * ones(3,1); ...
-    -cfg.qLim_abs  * ones(nJ,1); ...
-    -cfg.dqLim_abs * ones(nJ,1); ...
+    cfg.qLim_lower; ...              % per-Joint untere Positionslimits
+    -cfg.dqLim; ...                  % per-Joint Geschwindigkeitslimits (negativ)
     -cfg.vBLim   * ones(3,1); ...
     -cfg.wBLim   * ones(3,1); ...
     -cfg.eOriLim * ones(3,1) ...
     ];
 
-obsHigh = -obsLow;
+obsHigh = [ ...
+    cfg.ePLim   * ones(3,1); ...
+    cfg.eVLim   * ones(3,1); ...
+    cfg.qLim_upper; ...              % per-Joint obere Positionslimits
+    cfg.dqLim; ...                   % per-Joint Geschwindigkeitslimits (positiv)
+    cfg.vBLim   * ones(3,1); ...
+    cfg.wBLim   * ones(3,1); ...
+    cfg.eOriLim * ones(3,1) ...
+    ];
 
 obsInfo = rlNumericSpec([numel(obsLow) 1], ...
     'LowerLimit', obsLow, ...
     'UpperLimit', obsHigh, ...
     'Name', "obs");
 
-% Action: dq_cmd (Joint velocity commands)
+% Action: dq_cmd (Joint velocity commands, per-Joint begrenzt)
 actInfo = rlNumericSpec([nJ 1], ...
     'Name', "dq_cmd", ...
-    'LowerLimit', -cfg.dq_max*ones(nJ,1), ...
-    'UpperLimit',  cfg.dq_max*ones(nJ,1));
+    'LowerLimit', -cfg.dq_max, ...   % 7x1 Vektor
+    'UpperLimit',  cfg.dq_max);      % 7x1 Vektor
 
 %% =========================
 % 6) RL-Umgebung verknüpfen + ResetFcn
 % =========================
 env = rlSimulinkEnv(cfg.mdl, cfg.agentBlk, obsInfo, actInfo);
 
-% ResetFcn als lokale Funktion (siehe unten)
-env.ResetFcn = @(in)localResetFunctionSpaceKinova(in, cfg.nJ);
-
-% Optional: Episodes reproducible (wenn dein Reset randomisiert wird)
-% env.ResetFcn = @(in)localResetFunctionSpaceKinova(in, cfg.nJ, "Randomize", true);
+% ResetFcn mit Randomisierung (wichtig fuer Sim-to-Real Robustheit)
+env.ResetFcn = @(in)localResetFunctionSpaceKinova(in, cfg);
 
 %% =========================
 % 7) PPO Agent erstellen
@@ -203,20 +219,17 @@ env.ResetFcn = @(in)localResetFunctionSpaceKinova(in, cfg.nJ);
 initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
 
 agent = rlPPOAgent(obsInfo, actInfo, initOpts);
-agent.AgentOptions.SampleTime = cfg.Ts_agent;
 
-% Optional: feinere PPO-Hyperparameter (wie in deinem Bericht kommentiert)
-% agentOpts = rlPPOAgentOptions( ...
-%     'SampleTime', cfg.Ts_agent, ...
-%     'ExperienceHorizon', 1024, ...
-%     'MiniBatchSize', 256, ...
-%     'NumEpoch', 10, ...
-%     'ClipFactor', 0.2, ...
-%     'EntropyLossWeight', 1e-3, ...
-%     'AdvantageEstimateMethod', 'gae', ...
-%     'GAEFactor', 0.95, ...
-%     'DiscountFactor', 0.995);
-% agent = rlPPOAgent(actor, critic, agentOpts);
+% PPO-Hyperparameter (angepasst an 40 Hz Agent-Rate)
+agent.AgentOptions.SampleTime             = cfg.Ts_agent;
+agent.AgentOptions.ExperienceHorizon      = 512;    % ~12.8 s bei 40 Hz
+agent.AgentOptions.MiniBatchSize           = 128;
+agent.AgentOptions.NumEpoch                = 10;
+agent.AgentOptions.ClipFactor              = 0.2;
+agent.AgentOptions.EntropyLossWeight       = 0.01;   % Exploration foerdern
+agent.AgentOptions.DiscountFactor          = 0.99;
+agent.AgentOptions.AdvantageEstimateMethod = 'gae';
+agent.AgentOptions.GAEFactor               = 0.95;
 
 assignin('base','agent', agent);
 
@@ -242,12 +255,11 @@ trainOpts = rlTrainingOptions( ...
     'Plots', "training-progress" ...
 );
 
-% Optional: Save best agent
-% ts = datestr(now,'yyyymmdd_HHMMSS');
-% saveDirRun = fullfile(cfg.saveDir, cfg.saveTag + "_" + string(ts));
-% trainOpts.SaveAgentCriteria  = "AverageReward";
-% trainOpts.SaveAgentValue     = -inf;
-% trainOpts.SaveAgentDirectory = saveDirRun;
+% Besten Agenten waehrend Training speichern
+saveDirRun = fullfile(cfg.saveDir, cfg.saveTag + "_" + string(datestr(now,'yyyymmdd_HHMMSS')));
+trainOpts.SaveAgentCriteria  = "AverageReward";
+trainOpts.SaveAgentValue     = -inf;
+trainOpts.SaveAgentDirectory = saveDirRun;
 
 trainingStats = train(agent, env, trainOpts);
 
@@ -264,37 +276,36 @@ fprintf("\nGespeichert: %s\n", outName);
 %% =========================
 %  LOKALE RESET-FUNKTION
 % =========================
-function in = localResetFunctionSpaceKinova(in, nJ, varargin)
-% Reset-Funktion für RL-Training:
-% - setzt Startpose q0 (aus q_des falls vorhanden)
-% - setzt dq0, base_v0, base_w0, phi0
-%
-% OPTIONAL: Randomize=true -> kleine Störungen auf q0/dq0
+function in = localResetFunctionSpaceKinova(in, cfg)
+% Reset-Funktion mit Domain Randomization fuer Sim-to-Real Robustheit.
+% Randomisiert Startpose, Gelenkgeschwindigkeit und Basis-Zustand.
 
-p = inputParser;
-p.addParameter("Randomize", false, @(v)islogical(v)||ismember(v,[0 1]));
-p.parse(varargin{:});
-doRand = logical(p.Results.Randomize);
+nJ = cfg.nJ;
 
-% --- Startpose (IK-Seed, falls vorhanden) ---
+% --- Startpose (aus IK-Loesung) ---
 try
-    q_start = evalin('base','q_des(1,:).'';'); % Spalte
+    q_start = evalin('base','q_des(1,:).'';');
     if numel(q_start) ~= nJ, error("BadSize"); end
 catch
     q_start = zeros(nJ,1);
 end
 
-q0 = q_start;
-dq0 = zeros(nJ,1);
+% Stoerung auf Gelenkwinkel (+/- 3 Grad), innerhalb Limits halten
+q0 = q_start + deg2rad(3.0) * randn(nJ,1);
+q0 = max(min(q0, cfg.qLim_upper), cfg.qLim_lower);
 
-if doRand
-    q0  = q0  + deg2rad(1.0)*randn(nJ,1);
-    dq0 = dq0 + 0.05*randn(nJ,1);
+% Kleine Anfangsgeschwindigkeit
+dq0 = 0.05 * randn(nJ,1);
+
+% Basis-Zustand: 30% der Episoden nahe-fixiert (simuliert Deployment-Bedingung)
+if rand() < 0.3
+    base_v0 = zeros(3,1);
+    base_w0 = zeros(3,1);
+else
+    base_v0 = 0.02 * randn(3,1);
+    base_w0 = 0.05 * randn(3,1);
 end
-
-base_v0 = zeros(3,1);
-base_w0 = zeros(3,1);
-phi0    = 0;
+phi0 = 0;
 
 % --- In Simulink schreiben ---
 in = setVariable(in,'q0', q0);
@@ -302,8 +313,6 @@ in = setVariable(in,'dq0', dq0);
 in = setVariable(in,'base_v0', base_v0);
 in = setVariable(in,'base_w0', base_w0);
 in = setVariable(in,'phi0', phi0);
-
-% falls du Memory-Blöcke hast:
 in = setVariable(in,'reward_init', 0);
 in = setVariable(in,'isdone_init', 0);
 end

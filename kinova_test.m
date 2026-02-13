@@ -11,28 +11,27 @@ clear; clc;
 %  KONFIGURATION
 %  =========================
 cfg.backend            = "ros1";          % aktuell nur ROS1 implementiert
-cfg.rosMasterURI       = "";              % z.B. "http://192.168.1.2:11311" oder "" für lokal
-cfg.rosNodeIP          = "";              % z.B. "192.168.1.100" oder "" für auto
+cfg.rosMasterURI       = "http://192.168.1.10:11311"; % Kinova Gen3 Standard-Netzwerk (anpassen!)
+cfg.rosNodeIP          = "";              % Auto-Erkennung (oder eigene IP setzen)
 
 cfg.ns                 = "/my_gen3";      % Namespace deines Roboters (häufig /my_gen3)
 cfg.stateTopic         = "/joint_states"; % oft global: /joint_states
-% Velocity command topic (häufig bei kortex_driver):
-cfg.cmdTopic           = cfg.ns + "/in/joint_speeds"; % Alternative: "/in/joint_velocity" o.ä.
+% Kinova Gen3 kortex_driver Velocity-Topic (ROS Noetic)
+cfg.cmdTopic           = cfg.ns + "/in/joint_velocity";
 
-% Message type für Velocity-Kommandos:
-% - kortex_driver/JointSpeeds  (häufig)
-% - trajectory_msgs/JointTrajectory (Fallback, wenn Controller das akzeptiert)
-cfg.cmdMsgTypePrimary  = "kortex_driver/JointSpeeds";
-cfg.cmdMsgTypeFallback = "trajectory_msgs/JointTrajectory";
+% Message type: kortex_driver/Base_JointSpeeds (Noetic)
+cfg.cmdMsgTypePrimary  = "kortex_driver/Base_JointSpeeds";
+cfg.cmdMsgTypeFallback = "kortex_driver/Base_JointSpeeds"; % kein Fallback noetig
 
 % Joint-Namen (Reihenfolge muss zu /joint_states passen).
 % Für Gen3 (7DoF) oft: joint_1 ... joint_7
 cfg.jointNames = ["joint_1","joint_2","joint_3","joint_4","joint_5","joint_6","joint_7"];
 
 % Sicherheitslimits & Testprofil
-cfg.rateHz            = 100;       % Sende-/Log-Rate
-cfg.stateTimeout_s    = 0.25;      % wenn so lange kein joint_state: stoppe
-cfg.dqMax_abs         = 0.25;      % rad/s (sehr konservativ). Falls dein Driver deg/s erwartet: ist noch sicherer.
+cfg.rateHz            = 40;        % 40 Hz = Kinova High-Level Servo Rate
+cfg.stateTimeout_s    = 0.10;      % 100 ms Watchdog (streng fuer Sicherheit)
+% Kinova Gen3 per-Joint Limits mit 20% Sicherheitsfaktor fuer Tests
+cfg.dqMax_test        = 0.2 * [1.3963; 1.3963; 1.3963; 1.3963; 1.2218; 1.2218; 1.2218];
 cfg.testSpeed         = 0.10;      % rad/s (oder deg/s je nach Driver) -> klein halten
 cfg.testDuration_s    = 1.5;       % pro Joint
 cfg.restDuration_s    = 1.0;       % Pause/Stop zwischen Tests
@@ -129,8 +128,8 @@ for j = 1:nJ
         dq_cmd(:) = 0;
         dq_cmd(j) = d * cfg.testSpeed;
 
-        % Sättigung
-        dq_cmd = saturate(dq_cmd, cfg.dqMax_abs);
+        % Saettigung (per-Joint)
+        dq_cmd = max(min(dq_cmd, cfg.dqMax_test), -cfg.dqMax_test);
 
         % Für definierte Dauer senden
         tStart = tic;
@@ -236,40 +235,20 @@ function sendJointVelocity(pub, msgType, cfg, dq_cmd)
     dq_cmd = dq_cmd(:);
 
     switch string(msgType)
-        case "kortex_driver/JointSpeeds"
-            % Erwartete Struktur (typisch Kortex ROS):
-            % msg.joint_speeds(i).joint_identifier = i-1 oder i (je nach driver)
-            % msg.joint_speeds(i).value           = velocity
-            % msg.joint_speeds(i).duration        = 0
+        case "kortex_driver/Base_JointSpeeds"
             msg = rosmessage(pub);
-
-            % Einige Treiber nutzen 0-basierte Identifiers; andere 1-basiert.
-            % Wir setzen hier 1..n (oft ok). Falls dein Robot nicht reagiert:
-            % -> auf (i-1) ändern.
             nJ = numel(dq_cmd);
-            msg.JointSpeeds = repmat(msg.JointSpeeds, 1, nJ); %#ok<AGROW> (MATLAB passt ggf. an)
+            msg.JointSpeeds = repmat(msg.JointSpeeds, 1, nJ);
 
             for i = 1:nJ
-                msg.JointSpeeds(i).JointIdentifier = uint32(i); % ggf. uint32(i-1)
+                msg.JointSpeeds(i).JointIdentifier = uint32(i-1); % Kinova Gen3: 0-basiert (0..6)
                 msg.JointSpeeds(i).Value          = double(dq_cmd(i));
                 msg.JointSpeeds(i).Duration       = 0;
             end
             send(pub, msg);
 
-        case "trajectory_msgs/JointTrajectory"
-            % Fallback: JointTrajectory mit velocities
-            msg = rosmessage(pub);
-            msg.JointNames = cellstr(cfg.jointNames);
-
-            pt = rosmessage("trajectory_msgs/JointTrajectoryPoint");
-            pt.Velocities = double(dq_cmd).';
-            pt.TimeFromStart = rosduration(1/cfg.rateHz);
-
-            msg.Points = pt;
-            send(pub, msg);
-
         otherwise
-            error("Unsupported msg type: %s", msgType);
+            error("Nicht unterstuetzter Message-Typ: %s. Kinova Gen3 benoetigt kortex_driver/Base_JointSpeeds.", msgType);
     end
 end
 
@@ -314,20 +293,7 @@ function out = ternary(cond, a, b)
     if cond, out = a; else, out = b; end
 end
 
-% Was du typischerweise anpassen musst (2 Minuten)
-% 
-% cfg.ns (Namespace) und cfg.cmdTopic (Velocity Topic)
-% 
-% oft ist es /my_gen3/in/joint_speeds oder ähnlich.
-% 
-% cfg.jointNames passend zu deinem /joint_states (Namen müssen exakt matchen).
-% 
-% Falls der Roboter nicht reagiert, ist es sehr oft eins von:
-% 
-% falsches Topic,
-% 
-% falscher Message-Typ,
-% 
-% falsche JointIdentifier-Basis (0-basiert statt 1-basiert) → in sendJointVelocity bei JointIdentifier auf i-1 ändern.
-% 
-% Wenn du mir sagst, welchen Kinova (Gen3 / Gen3 Lite / Jaco) und welcher Treiber (kortex_driver, ros2_kortex, MATLAB Support Package), kann ich dir das Script auch so "hart verdrahten", dass es ohne Topic-Raten direkt läuft.
+% Konfiguriert fuer: Kinova Gen3 7-DOF mit kortex_driver (ROS Noetic)
+% Topic:  /my_gen3/in/joint_velocity
+% MsgType: kortex_driver/Base_JointSpeeds
+% Joint IDs: 0-basiert (0..6)

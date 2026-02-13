@@ -31,7 +31,8 @@ p.addParameter("MountXYZ",[0 0 0.5], @(v)isnumeric(v)&&numel(v)==3);
 p.addParameter("MountRPY",[0 0 0], @(v)isnumeric(v)&&numel(v)==3);
 p.addParameter("BaseSize",[1 1 1], @(v)isnumeric(v)&&numel(v)==3);
 p.addParameter("BaseMass",65, @(v)isnumeric(v)&&isscalar(v)&&v>0);
-p.addParameter("BaseInertiaDiag",[8 8 8], @(v)isnumeric(v)&&numel(v)==3);
+% Korrekt: I = (1/12)*M*(a^2+b^2) = (1/12)*65*2 = 10.833 fuer 1x1x1m, 65kg
+p.addParameter("BaseInertiaDiag",[10.833 10.833 10.833], @(v)isnumeric(v)&&numel(v)==3);
 p.parse(kinovaUrdFile, outFile, varargin{:});
 
 kinovaUrdFile = string(p.Results.kinovaUrdFile);
@@ -149,5 +150,19 @@ fclose(fid);
 
 fprintf("Wrote SpaceKinova URDF: %s\n", outFile);
 fprintf("Kinova root link (after prefix): %s\n", kinovaRoot);
+
+% --- Validierung der generierten URDF ---
+try
+    testRobot = importrobot(char(outFile));
+    testRobot.DataFormat = 'row';
+    nBodies = numel(testRobot.Bodies);
+    nDOF = numel(homeConfiguration(testRobot));
+    fprintf("Validierung OK: %d Bodies, %d DOF\n", nBodies, nDOF);
+    if nDOF < 7
+        warning("Weniger als 7 DOF erkannt (%d). Kinova Gen3 URDF pruefen.", nDOF);
+    end
+catch ME
+    warning("URDF-Validierung fehlgeschlagen: %s\nBitte manuell pruefen.", ME.message);
+end
 
 end

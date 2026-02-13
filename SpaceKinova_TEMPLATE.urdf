@@ -1,12 +1,14 @@
 <?xml version="1.0"?>
+<!-- REFERENZ-TEMPLATE: Nutze make_spacekinova_urdf.m zur URDF-Generierung -->
 <robot name="space_kinova_template">
 
-  <!-- central cube base (from your SpaceRobot.urdf) -->
+  <!-- central cube base (65 kg, 1x1x1 m) -->
   <link name="base_link">
     <inertial>
       <origin xyz="0 0 0"/>
       <mass value="65.0"/>
-      <inertia ixx="8" iyy="8" izz="8" ixy="0" ixz="0" iyz="0"/>
+      <!-- I = (1/12)*M*(a^2+b^2) = (1/12)*65*2 = 10.833 -->
+      <inertia ixx="10.833" iyy="10.833" izz="10.833" ixy="0" ixz="0" iyz="0"/>
     </inertial>
     <visual>
       <origin xyz="0 0 0"/>
