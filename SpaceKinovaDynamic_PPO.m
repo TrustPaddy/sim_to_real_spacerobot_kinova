@@ -97,6 +97,12 @@ assignin('base','qLim_lower', cfg.qLim_lower);  % 7x1 Vektor
 assignin('base','qLim_upper', cfg.qLim_upper);  % 7x1 Vektor
 assignin('base','dqLim',      cfg.dqLim);        % 7x1 Vektor
 
+% PD velocity controller gains (innerer Regler in Simulink)
+cfg.Kp_vel = 50;    % Proportional-Verstaerkung
+cfg.Kd_vel = 1.0;   % Daempfung
+assignin('base', 'Kp_vel', cfg.Kp_vel);
+assignin('base', 'Kd_vel', cfg.Kd_vel);
+
 %% =========================
 % 2) Referenztrajektorie erzeugen (EE_ref, EE_vref)
 % =========================
