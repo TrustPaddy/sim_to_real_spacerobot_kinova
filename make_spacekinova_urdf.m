@@ -140,7 +140,9 @@ kinovaRoot, mountXYZ(1), mountXYZ(2), mountXYZ(3), mountRPY(1), mountRPY(2), mou
 header = sprintf('<?xml version="1.0"?>\n<robot name="space_kinova">\n\n');
 footer = sprintf('</robot>\n');
 
-outTxt = header + baseLink + fixedJoint + "  <!-- Kinova (prefixed) -->\n" + inner + "\n" + footer;
+outTxt = string(header) + string(baseLink) + string(fixedJoint) ...
+       + "  <!-- Kinova (prefixed) -->" + newline + string(inner) + newline ...
+       + string(footer);
 
 % --- Write output
 fid = fopen(outFile, 'w');
