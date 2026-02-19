@@ -88,9 +88,12 @@ cfg.saveTag = "ppo_spacekinova_vel";
 %% =========================
 % 1) Parameter in Base Workspace (für Simulink-Blöcke)
 % =========================
+% WICHTIG: Simulink-Modell erwartet Skalare fuer dq_max/tau_max (Saturation-Bloecke).
+% Wir verwenden das konservativste Limit (Minimum ueber alle Joints).
+% Die per-Joint Vektoren werden nur fuer die RL Action/Observation Specs genutzt.
 assignin('base','d_safe',     cfg.d_safe);
-assignin('base','dq_max',     cfg.dq_max);      % 7x1 Vektor
-assignin('base','tau_max',    cfg.tau_max);      % 7x1 Vektor
+assignin('base','dq_max',     min(cfg.dq_max));     % Skalar fuer Simulink Saturation
+assignin('base','tau_max',    min(cfg.tau_max));     % Skalar fuer Simulink Saturation
 assignin('base','dt_agent',   cfg.dt_agent);
 assignin('base','nJ',         cfg.nJ);
 assignin('base','qLim_lower', cfg.qLim_lower);  % 7x1 Vektor
