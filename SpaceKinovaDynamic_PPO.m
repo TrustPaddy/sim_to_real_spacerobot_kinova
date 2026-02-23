@@ -38,14 +38,14 @@ cfg.nJ = 7;
 
 % ---- Simulations- & Agenten-Zeit ----
 cfg.T        = 8.5;     % Episodendauer [s]
-cfg.Ts       = 0.01;    % Simulations-FixedStep [s]
+cfg.Ts       = 0.005;    % Simulations-FixedStep [s]
 cfg.Ts_agent = 0.025;   % Agent SampleTime [s] = 40 Hz (Kinova Gen3 High-Level Servo Rate)
 
 % ---- Referenztrajektorie (Kreis) ----
-cfg.r      = 0.4;                         % Radius [m]
-cfg.center = [4.5 - cfg.r, 0.0, 0.0];     % Mittelpunkt
+cfg.r      = 0.0;                         % Radius [m]
+cfg.center = [0.0, 0.0, 1.5 - cfg.r];     % Mittelpunkt
 cfg.omega  = pi/cfg.T;                    % Winkelgeschwindigkeit
-cfg.zConst = 0.0;                         % konstante z-Höhe
+cfg.yConst = 0.0;                         % konstante z-Höhe
 
 % ---- Kinova Gen3 7-DOF Gelenkspezifikationen (aus ros_kortex URDF) ----
 % Positionslimits: J1,J3,J7 continuous -> Software-Limit 2*pi
@@ -97,6 +97,7 @@ assignin('base','qLim_lower', cfg.qLim_lower);  % 7x1 Vektor
 assignin('base','qLim_upper', cfg.qLim_upper);  % 7x1 Vektor
 assignin('base','dqLim',      cfg.dqLim);        % 7x1 Vektor
 
+
 % PD velocity controller gains (innerer Regler in Simulink)
 cfg.Kp_vel = 50;    % Proportional-Verstaerkung
 cfg.Kd_vel = 1.0;   % Daempfung
@@ -109,8 +110,8 @@ assignin('base', 'Kd_vel', cfg.Kd_vel);
 t = 0:cfg.Ts:cfg.T;
 
 x = cfg.center(1) + cfg.r*cos(cfg.omega*t);
-y = cfg.center(2) + cfg.r*sin(cfg.omega*t);
-z = cfg.center(3) + cfg.zConst*t;
+y = cfg.center(2) + cfg.yConst*t;
+z = cfg.center(3) + cfg.r*sin(cfg.omega*t);
 
 traj = [x(:) y(:) z(:)];
 
@@ -270,14 +271,14 @@ trainOpts.SaveAgentDirectory = saveDirRun;
 trainingStats = train(agent, env, trainOpts);
 
 %% =========================
-% 10) Agent speichern
-% =========================
-if ~isfolder(cfg.saveDir), mkdir(cfg.saveDir); end
-timestamp = datestr(now,'yyyymmdd_HHMMSS');
-outName = fullfile(cfg.saveDir, cfg.saveTag + "_" + string(timestamp) + ".mat");
-save(outName, 'agent', 'cfg', 'trainingStats');
-
-fprintf("\nGespeichert: %s\n", outName);
+% % 10) Agent speichern
+% % =========================
+% if ~isfolder(cfg.saveDir), mkdir(cfg.saveDir); end
+% timestamp = datestr(now,'yyyymmdd_HHMMSS');
+% outName = fullfile(cfg.saveDir, cfg.saveTag + "_" + string(timestamp) + ".mat");
+% save(outName, 'agent', 'cfg', 'trainingStats');
+% 
+% fprintf("\nGespeichert: %s\n", outName);
 
 %% =========================
 %  LOKALE RESET-FUNKTION
