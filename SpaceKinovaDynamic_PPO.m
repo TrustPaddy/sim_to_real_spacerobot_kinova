@@ -27,7 +27,9 @@ cfg = struct();
 
 % ---- Dateien/Modelle ----
 cfg.urdfFile   = "SpaceKinova.urdf";   % <- deine generierte URDF
-cfg.mdl        = "SpaceKinova";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
+%cfg.mdl        = "SpaceKinova";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
+%cfg.mdl        = "SpaceKinova_MotionProfile";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
+cfg.mdl        = "SpaceKinova_Torque";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
 cfg.agentBlk   = cfg.mdl + "/RL_Agent";
 
 % Kinova Gen3 End-Effector Link (mit Prefix aus make_spacekinova_urdf)
@@ -42,10 +44,10 @@ cfg.Ts       = 0.005;    % Simulations-FixedStep [s]
 cfg.Ts_agent = 0.025;   % Agent SampleTime [s] = 40 Hz (Kinova Gen3 High-Level Servo Rate)
 
 % ---- Referenztrajektorie (Kreis) ----
-cfg.r      = 0.0;                         % Radius [m]
-cfg.center = [0.0, 0.0, 1.5 - cfg.r];     % Mittelpunkt
+cfg.r      = 0.2;                         % Radius [m]
+cfg.center = [0.0, -0.025, 1.687 - cfg.r];     % Mittelpunkt
 cfg.omega  = pi/cfg.T;                    % Winkelgeschwindigkeit
-cfg.yConst = 0.0;                         % konstante z-Höhe
+cfg.yConst = 0;                         % konstante z-Höhe
 
 % ---- Kinova Gen3 7-DOF Gelenkspezifikationen (aus ros_kortex URDF) ----
 % Positionslimits: J1,J3,J7 continuous -> Software-Limit 2*pi
@@ -98,20 +100,20 @@ assignin('base','qLim_upper', cfg.qLim_upper);  % 7x1 Vektor
 assignin('base','dqLim',      cfg.dqLim);        % 7x1 Vektor
 
 
-% PD velocity controller gains (innerer Regler in Simulink)
-cfg.Kp_vel = 50;    % Proportional-Verstaerkung
-cfg.Kd_vel = 1.0;   % Daempfung
-assignin('base', 'Kp_vel', cfg.Kp_vel);
-assignin('base', 'Kd_vel', cfg.Kd_vel);
+% % PD velocity controller gains (innerer Regler in Simulink)
+% cfg.Kp_vel = 50;    % Proportional-Verstaerkung
+% cfg.Kd_vel = 1.0;   % Daempfung
+% assignin('base', 'Kp_vel', cfg.Kp_vel);
+% assignin('base', 'Kd_vel', cfg.Kd_vel);
 
 %% =========================
 % 2) Referenztrajektorie erzeugen (EE_ref, EE_vref)
 % =========================
 t = 0:cfg.Ts:cfg.T;
 
-x = cfg.center(1) + cfg.r*cos(cfg.omega*t);
+x = cfg.center(1) + cfg.r*sin(cfg.omega*t);
 y = cfg.center(2) + cfg.yConst*t;
-z = cfg.center(3) + cfg.r*sin(cfg.omega*t);
+z = cfg.center(3) + cfg.r*cos(cfg.omega*t);
 
 traj = [x(:) y(:) z(:)];
 
@@ -160,6 +162,17 @@ end
 
 assignin('base','q_des', q_des);
 
+% % Animation: jeden 10. Frame zeigen
+% for k = 1:10:size(q_des,1)
+%     show(robot_rbt, q_des(k,:), 'PreservePlot', false);
+%     hold on;
+%     plot3(traj(:,1), traj(:,2), traj(:,3), 'r--', 'LineWidth', 2);
+%     plot3(traj(k,1), traj(k,2), traj(k,3), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
+%     title(sprintf('t = %.2f s', t(k)));
+%     drawnow;
+%     pause(0.005);
+% end
+
 %% =========================
 % 4) Simulink Modell konfigurieren
 % =========================
@@ -167,7 +180,7 @@ load_system(cfg.mdl);
 
 set_param(cfg.mdl, ...
     'StopTime',   num2str(cfg.T), ...
-    'Solver',     'ode4', ...
+    'Solver',     'ode14x', ...
     'FixedStep',  num2str(cfg.Ts), ...
     'SolverType', 'Fixed-step');
 
@@ -209,8 +222,8 @@ obsInfo = rlNumericSpec([numel(obsLow) 1], ...
 % Action: dq_cmd (Joint velocity commands, per-Joint begrenzt)
 actInfo = rlNumericSpec([nJ 1], ...
     'Name', "dq_cmd", ...
-    'LowerLimit', -cfg.dq_max, ...   % 7x1 Vektor
-    'UpperLimit',  cfg.dq_max);      % 7x1 Vektor
+    'LowerLimit', -ones(nJ,1), ...   % 7x1 Vektor
+    'UpperLimit',  ones(nJ,1));      % 7x1 Vektor
 
 %% =========================
 % 6) RL-Umgebung verknüpfen + ResetFcn
@@ -220,25 +233,88 @@ env = rlSimulinkEnv(cfg.mdl, cfg.agentBlk, obsInfo, actInfo);
 % ResetFcn mit Randomisierung (wichtig fuer Sim-to-Real Robustheit)
 env.ResetFcn = @(in)localResetFunctionSpaceKinova(in, cfg);
 
-%% =========================
-% 7) PPO Agent erstellen
-% =========================
-initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% %% ============================================
+% % 7.1) PPO AGENT (Baseline)
+% % ============================================
+% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% agent = rlPPOAgent(obsInfo, actInfo, initOpts);
+% agent.AgentOptions.SampleTime              = cfg.Ts_agent;
+% agent.AgentOptions.ExperienceHorizon       = 512;
+% agent.AgentOptions.MiniBatchSize           = 256;
+% agent.AgentOptions.NumEpoch                = 3;
+% agent.AgentOptions.ClipFactor              = 0.1;
+% agent.AgentOptions.EntropyLossWeight       = 5e-4;
+% agent.AgentOptions.DiscountFactor          = 0.99;
+% agent.AgentOptions.AdvantageEstimateMethod = 'gae';
+% agent.AgentOptions.GAEFactor               = 0.95;
+% assignin('base','agent', agent);
 
+
+%% ============================================
+% 7.1) PPO AGENT (default-nah)
+% ============================================
+initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
 agent = rlPPOAgent(obsInfo, actInfo, initOpts);
 
-% PPO-Hyperparameter (angepasst an 40 Hz Agent-Rate)
-agent.AgentOptions.SampleTime             = cfg.Ts_agent;
-agent.AgentOptions.ExperienceHorizon      = 512;    % ~12.8 s bei 40 Hz
-agent.AgentOptions.MiniBatchSize           = 128;
-agent.AgentOptions.NumEpoch                = 10;
-agent.AgentOptions.ClipFactor              = 0.2;
-agent.AgentOptions.EntropyLossWeight       = 0.01;   % Exploration foerdern
-agent.AgentOptions.DiscountFactor          = 0.99;
-agent.AgentOptions.AdvantageEstimateMethod = 'gae';
-agent.AgentOptions.GAEFactor               = 0.95;
+% Nur modellabhängige Einstellung setzen
+agent.AgentOptions.SampleTime = cfg.Ts_agent;
 
 assignin('base','agent', agent);
+
+% %% ============================================
+% % 7.2) TD3 AGENT (default-nah)
+% % ============================================
+% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% agent = rlTD3Agent(obsInfo, actInfo, initOpts);
+% 
+% % Nur modellabhängige Einstellung setzen
+% agent.AgentOptions.SampleTime = cfg.Ts_agent;
+% 
+% assignin('base','agent', agent);
+% 
+% %% ============================================
+% % 7.3) SAC AGENT (default-nah)
+% % ============================================
+% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% agent = rlSACAgent(obsInfo, actInfo, initOpts);
+% 
+% % Nur modellabhängige Einstellung setzen
+% agent.AgentOptions.SampleTime = cfg.Ts_agent;
+% 
+% assignin('base','agent', agent);
+% 
+% %% ============================================
+% % 7.4) PG AGENT (default-nah)
+% % ============================================
+% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% agent = rlPGAgent(obsInfo, actInfo, initOpts);
+% 
+% % Nur modellabhängige Einstellung setzen
+% agent.AgentOptions.SampleTime = cfg.Ts_agent;
+% 
+% assignin('base','agent', agent);
+% 
+% %% ============================================
+% % 7.5) DDPG AGENT (default-nah)
+% % ============================================
+% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% agent = rlDDPGAgent(obsInfo, actInfo, initOpts);
+% 
+% % Nur modellabhängige Einstellung setzen
+% agent.AgentOptions.SampleTime = cfg.Ts_agent;
+% 
+% assignin('base','agent', agent);
+% 
+% %% ============================================
+% % 7.6) TRPO AGENT (default-nah)
+% % ============================================
+% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% agent = rlTRPOAgent(obsInfo, actInfo, initOpts);
+% 
+% % Nur modellabhängige Einstellung setzen
+% agent.AgentOptions.SampleTime = cfg.Ts_agent;
+% 
+% assignin('base','agent', agent);
 
 %% =========================
 % 8) Sanity Check
@@ -253,22 +329,32 @@ end
 %% =========================
 % 9) Training Options + Train
 % =========================
+
+% Visualisierung während Training unterdrücken
+set_param(bdroot, 'SimMechanicsOpenEditorOnUpdate', 'off');
+
 trainOpts = rlTrainingOptions( ...
-    'MaxEpisodes', cfg.maxEpisodes, ...
-    'MaxStepsPerEpisode', floor(cfg.T/cfg.Ts_agent), ...
-    'ScoreAveragingWindowLength', 25, ...
-    'StopTrainingCriteria', "AverageReward", ...
-    'StopTrainingValue', -0, ...
-    'Plots', "training-progress" ...
+    'MaxEpisodes',                cfg.maxEpisodes, ...
+    'MaxStepsPerEpisode',         floor(cfg.T/cfg.Ts_agent), ...
+    'ScoreAveragingWindowLength', 25, ... 
+    'StopTrainingCriteria',       "AverageReward", ...  
+    'StopTrainingValue',          650, ...
+    'Plots',                      "training-progress" ...
 );
 
-% Besten Agenten waehrend Training speichern
-saveDirRun = fullfile(cfg.saveDir, cfg.saveTag + "_" + string(datestr(now,'yyyymmdd_HHMMSS')));
-trainOpts.SaveAgentCriteria  = "AverageReward";
-trainOpts.SaveAgentValue     = -inf;
-trainOpts.SaveAgentDirectory = saveDirRun;
+% % Besten Agenten speichern (empfohlen!)
+% saveDirRun = fullfile(cfg.saveDir, cfg.saveTag + "_" + string(datestr(now,'yyyymmdd_HHMMSS')));
+% trainOpts.SaveAgentCriteria  = "EpisodeReward";
+% trainOpts.SaveAgentValue     = -inf;
+% trainOpts.SaveAgentDirectory = saveDirRun;
 
 trainingStats = train(agent, env, trainOpts);
+
+% NACH dem Training: Sauber abspielen
+set_param(bdroot, 'SimMechanicsOpenEditorOnUpdate', 'on');  % Explorer wieder an
+
+simOpts = rlSimulationOptions('MaxSteps', floor(cfg.T/cfg.Ts_agent));
+simOut  = sim(env, agent, simOpts);  % Frische Simulation mit funktionierendem Explorer
 
 %% =========================
 % % 10) Agent speichern
@@ -315,11 +401,11 @@ end
 phi0 = 0;
 
 % --- In Simulink schreiben ---
-in = setVariable(in,'q0', q0);
-in = setVariable(in,'dq0', dq0);
-in = setVariable(in,'base_v0', base_v0);
-in = setVariable(in,'base_w0', base_w0);
-in = setVariable(in,'phi0', phi0);
+% in = setVariable(in,'q0', q0);
+% in = setVariable(in,'dq0', dq0);
+% in = setVariable(in,'base_v0', base_v0);
+% in = setVariable(in,'base_w0', base_w0);
+% in = setVariable(in,'phi0', phi0);
 in = setVariable(in,'reward_init', 0);
 in = setVariable(in,'isdone_init', 0);
 end
