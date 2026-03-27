@@ -29,7 +29,7 @@ cfg = struct();
 cfg.urdfFile   = "SpaceKinova.urdf";   % <- deine generierte URDF
 %cfg.mdl        = "SpaceKinova";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
 %cfg.mdl        = "SpaceKinova_MotionProfile";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
-cfg.mdl        = "SpaceKinova_Torque";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
+cfg.mdl        = "SpaceKinova";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
 cfg.agentBlk   = cfg.mdl + "/RL_Agent";
 
 % Kinova Gen3 End-Effector Link (mit Prefix aus make_spacekinova_urdf)
@@ -163,7 +163,7 @@ end
 assignin('base','q_des', q_des);
 
 % % Animation: jeden 10. Frame zeigen
-% for k = 1:10:size(q_des,1)
+% for k = 1:10:size(q_des,1)/2
 %     show(robot_rbt, q_des(k,:), 'PreservePlot', false);
 %     hold on;
 %     plot3(traj(:,1), traj(:,2), traj(:,3), 'r--', 'LineWidth', 2);
@@ -233,34 +233,38 @@ env = rlSimulinkEnv(cfg.mdl, cfg.agentBlk, obsInfo, actInfo);
 % ResetFcn mit Randomisierung (wichtig fuer Sim-to-Real Robustheit)
 env.ResetFcn = @(in)localResetFunctionSpaceKinova(in, cfg);
 
-% %% ============================================
-% % 7.1) PPO AGENT (Baseline)
-% % ============================================
-% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
-% agent = rlPPOAgent(obsInfo, actInfo, initOpts);
-% agent.AgentOptions.SampleTime              = cfg.Ts_agent;
-% agent.AgentOptions.ExperienceHorizon       = 512;
-% agent.AgentOptions.MiniBatchSize           = 256;
-% agent.AgentOptions.NumEpoch                = 3;
-% agent.AgentOptions.ClipFactor              = 0.1;
-% agent.AgentOptions.EntropyLossWeight       = 5e-4;
-% agent.AgentOptions.DiscountFactor          = 0.99;
-% agent.AgentOptions.AdvantageEstimateMethod = 'gae';
-% agent.AgentOptions.GAEFactor               = 0.95;
-% assignin('base','agent', agent);
-
-
 %% ============================================
-% 7.1) PPO AGENT (default-nah)
+% 7.1) PPO AGENT (Baseline)
 % ============================================
 initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
 agent = rlPPOAgent(obsInfo, actInfo, initOpts);
 
-% Nur modellabhängige Einstellung setzen
-agent.AgentOptions.SampleTime = cfg.Ts_agent;
+agent.AgentOptions.SampleTime                       = cfg.Ts_agent;
+ agent.AgentOptions.ExperienceHorizon                = 2048;
+ agent.AgentOptions.MiniBatchSize                    = 265;
+% agent.AgentOptions.NumEpoch                         = 10;
+%agent.AgentOptions.EntropyLossWeight                = 1e-3;
+agent.AgentOptions.ActorOptimizerOptions.LearnRate  = 1e-3;
+agent.AgentOptions.CriticOptimizerOptions.LearnRate = 5e-3;
 
 assignin('base','agent', agent);
 
+
+% %% ============================================
+% % 7.1) PPO AGENT (default-nah)
+% % ============================================
+% initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
+% agent = rlPPOAgent(obsInfo, actInfo, initOpts);
+% 
+% % Nur modellabhängige Einstellung setzen
+% agent.AgentOptions.SampleTime = cfg.Ts_agent;
+% % agent.AgentOptions.ClipFactor = 0.99;
+% % agent.AgentOptions.EntropyLossWeight = 0;
+% % agent.AgentOptions.AdvantageEstimateMethod = 'finite-horizon';
+% % agent.AgentOptions.NumEpoch = 1;
+% 
+% assignin('base','agent', agent);
+ 
 % %% ============================================
 % % 7.2) TD3 AGENT (default-nah)
 % % ============================================
@@ -271,18 +275,19 @@ assignin('base','agent', agent);
 % agent.AgentOptions.SampleTime = cfg.Ts_agent;
 % 
 % assignin('base','agent', agent);
-% 
+
 % %% ============================================
 % % 7.3) SAC AGENT (default-nah)
 % % ============================================
 % initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
 % agent = rlSACAgent(obsInfo, actInfo, initOpts);
 % 
+% 
 % % Nur modellabhängige Einstellung setzen
 % agent.AgentOptions.SampleTime = cfg.Ts_agent;
 % 
 % assignin('base','agent', agent);
-% 
+
 % %% ============================================
 % % 7.4) PG AGENT (default-nah)
 % % ============================================
@@ -304,7 +309,7 @@ assignin('base','agent', agent);
 % agent.AgentOptions.SampleTime = cfg.Ts_agent;
 % 
 % assignin('base','agent', agent);
-% 
+
 % %% ============================================
 % % 7.6) TRPO AGENT (default-nah)
 % % ============================================
@@ -336,10 +341,11 @@ set_param(bdroot, 'SimMechanicsOpenEditorOnUpdate', 'off');
 trainOpts = rlTrainingOptions( ...
     'MaxEpisodes',                cfg.maxEpisodes, ...
     'MaxStepsPerEpisode',         floor(cfg.T/cfg.Ts_agent), ...
-    'ScoreAveragingWindowLength', 25, ... 
+    'ScoreAveragingWindowLength', 25, ...  
     'StopTrainingCriteria',       "AverageReward", ...  
-    'StopTrainingValue',          650, ...
-    'Plots',                      "training-progress" ...
+    'StopTrainingValue',          100000, ...
+    'Plots',                      "training-progress", ...
+    'StopOnError',                "off" ...
 );
 
 % % Besten Agenten speichern (empfohlen!)
@@ -365,6 +371,17 @@ simOut  = sim(env, agent, simOpts);  % Frische Simulation mit funktionierendem E
 % save(outName, 'agent', 'cfg', 'trainingStats');
 % 
 % fprintf("\nGespeichert: %s\n", outName);
+
+tail_idx = round(0.7*cfg.maxEpisodes):cfg.maxEpisodes;
+
+% 1) Konsistenz (dimensionslos, vergleichbar zwischen Agenten)
+CV = std(trainingStats.EpisodeReward(tail_idx)) ...
+   / abs(mean(trainingStats.EpisodeReward(tail_idx)))
+
+% 2) Konvergenz (≈ 0 heißt Plateau erreicht)
+drift = mean(diff(trainingStats.AverageReward(tail_idx)))
+
+[value, i] = max(trainingStats.AverageReward)
 
 %% =========================
 %  LOKALE RESET-FUNKTION
