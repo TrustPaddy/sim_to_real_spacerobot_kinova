@@ -92,7 +92,7 @@ cfg = struct();
 
 % ---- Dateien/Modelle ----
 cfg.urdfFile   = "SpaceKinova.urdf";
-cfg.mdl        = "SpaceKinova_MotionProfile_CDR";
+cfg.mdl        = "SpaceKinova_MotionProfile";
 cfg.agentBlk   = cfg.mdl + "/RL_Agent";
 cfg.eeBodyName = "kinova_end_effector_link";
 
@@ -139,7 +139,7 @@ cfg.base_inertia_nominal  = [0.1; 0.1; 0.1];         % [kg*m^2]
 cfg.joint_damping_nominal = [0.5; 0.5; 0.5; 0.5; 0.3; 0.3; 0.3]; % [Nm*s/rad]
 
 % ---- PPO/Training ----
-cfg.maxEpisodes = 3000;
+cfg.maxEpisodes = 1000;
 cfg.hiddenUnits = 128;
 
 % ---- Speicherpfade ----
@@ -159,9 +159,9 @@ cdr.phase_fractions = [0.0, 0.25, 0.50, 0.75, 1.01]; % 4 Phasen
 % Auf false setzen, wenn die entsprechende Simulink-Aenderung NICHT
 % umgesetzt ist. Sonst werden Variablen geschrieben, die nichts bewirken.
 % =========================================================================
-cdr.enable.trajectory     = false;    % CDR-1: funktioniert sofort (From Workspace)
+cdr.enable.trajectory     = true;    % CDR-1: funktioniert sofort (From Workspace)
 cdr.enable.mass_inertia   = false;   % CDR-2: braucht Simscape-Parametrisierung
-cdr.enable.actuator_delay = true;   % CDR-3: braucht Integer Delay Block
+cdr.enable.actuator_delay = false;   % CDR-3: braucht Integer Delay Block
 cdr.enable.friction       = false;   % CDR-4: braucht Simscape-Joint-Anpassung
 cdr.enable.start_config   = false;   % CDR-5: braucht IC-Block fuer q0/dq0
 
@@ -538,7 +538,10 @@ trainOpts = rlTrainingOptions( ...
     'StopTrainingCriteria',       "AverageReward", ...
     'StopTrainingValue',           10000, ...
     'Plots',                      "training-progress", ...
-    'StopOnError',                "off" ...
+    'StopOnError',                "off", ...
+    'UseParallel', true, ...
+    'ParallelizationOptions', rl.option.ParallelTraining(...
+        'Mode', 'async') ...
 );
 
 % Besten Agenten automatisch speichern

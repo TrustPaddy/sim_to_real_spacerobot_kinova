@@ -29,7 +29,7 @@ cfg = struct();
 cfg.urdfFile   = "SpaceKinova.urdf";   % <- deine generierte URDF
 %cfg.mdl        = "SpaceKinova";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
 %cfg.mdl        = "SpaceKinova_MotionProfile";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
-cfg.mdl        = "SpaceKinova";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
+cfg.mdl        = "SpaceKinova_MotionProfile";        % <- dein angepasstes Simulink-Modell (z.B. Kopie von SpaceRobot.slx)
 cfg.agentBlk   = cfg.mdl + "/RL_Agent";
 
 % Kinova Gen3 End-Effector Link (mit Prefix aus make_spacekinova_urdf)
@@ -39,13 +39,16 @@ cfg.eeBodyName = "kinova_end_effector_link";
 cfg.nJ = 7;
 
 % ---- Simulations- & Agenten-Zeit ----
-cfg.T        = 8.5;     % Episodendauer [s]
-cfg.Ts       = 0.005;    % Simulations-FixedStep [s]
-cfg.Ts_agent = 0.025;   % Agent SampleTime [s] = 40 Hz (Kinova Gen3 High-Level Servo Rate)
+%cfg.T        = 8.5;     % Episodendauer [s]
+cfg.T        = 16;     % Episodendauer [s]
+%cfg.Ts       = 0.005;    % Simulations-FixedStep [s]
+cfg.Ts       = 0.02;    % Simulations-FixedStep [s]
+%cfg.Ts_agent = 0.025;   % Agent SampleTime [s] = 40 Hz (Kinova Gen3 High-Level Servo Rate)
+cfg.Ts_agent = 0.1;   % Agent SampleTime [s] = 40 Hz (Kinova Gen3 High-Level Servo Rate)
 
 % ---- Referenztrajektorie (Kreis) ----
 cfg.r      = 0.2;                         % Radius [m]
-cfg.center = [0.0, -0.025, 1.687 - cfg.r];     % Mittelpunkt
+cfg.center = [0.479, -0.005, 0.936 + cfg.r];     % Mittelpunkt
 cfg.omega  = pi/cfg.T;                    % Winkelgeschwindigkeit
 cfg.yConst = 0;                         % konstante z-Höhe
 
@@ -80,7 +83,7 @@ cfg.wBLim   = 1.0;      % [rad/s]
 cfg.eOriLim = pi;       % [rad]
 
 % PPO/Training
-cfg.maxEpisodes = 1000;
+cfg.maxEpisodes = 2000;
 cfg.hiddenUnits = 128;
 
 % Speicherpfade
@@ -113,7 +116,7 @@ t = 0:cfg.Ts:cfg.T;
 
 x = cfg.center(1) + cfg.r*sin(cfg.omega*t);
 y = cfg.center(2) + cfg.yConst*t;
-z = cfg.center(3) + cfg.r*cos(cfg.omega*t);
+z = cfg.center(3) - cfg.r*cos(cfg.omega*t);
 
 traj = [x(:) y(:) z(:)];
 
@@ -162,16 +165,16 @@ end
 
 assignin('base','q_des', q_des);
 
-% % Animation: jeden 10. Frame zeigen
-% for k = 1:10:size(q_des,1)/2
-%     show(robot_rbt, q_des(k,:), 'PreservePlot', false);
-%     hold on;
-%     plot3(traj(:,1), traj(:,2), traj(:,3), 'r--', 'LineWidth', 2);
-%     plot3(traj(k,1), traj(k,2), traj(k,3), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
-%     title(sprintf('t = %.2f s', t(k)));
-%     drawnow;
-%     pause(0.005);
-% end
+%Animation: jeden 10. Frame zeigen
+for k = 1:10:size(q_des,1)/2
+    show(robot_rbt, q_des(k,:), 'PreservePlot', false);
+    hold on;
+    plot3(traj(:,1), traj(:,2), traj(:,3), 'r--', 'LineWidth', 2);
+    plot3(traj(k,1), traj(k,2), traj(k,3), 'go', 'MarkerSize', 10, 'MarkerFaceColor', 'g');
+    title(sprintf('t = %.2f s', t(k)));
+    drawnow;
+    pause(0.005);
+end
 
 %% =========================
 % 4) Simulink Modell konfigurieren
@@ -233,35 +236,34 @@ env = rlSimulinkEnv(cfg.mdl, cfg.agentBlk, obsInfo, actInfo);
 % ResetFcn mit Randomisierung (wichtig fuer Sim-to-Real Robustheit)
 env.ResetFcn = @(in)localResetFunctionSpaceKinova(in, cfg);
 
-%% ============================================
+% % ============================================
 % 7.1) PPO AGENT (Baseline)
 % ============================================
 initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
 agent = rlPPOAgent(obsInfo, actInfo, initOpts);
 
 agent.AgentOptions.SampleTime                       = cfg.Ts_agent;
- agent.AgentOptions.ExperienceHorizon                = 2048;
- agent.AgentOptions.MiniBatchSize                    = 265;
-% agent.AgentOptions.NumEpoch                         = 10;
-%agent.AgentOptions.EntropyLossWeight                = 1e-3;
-agent.AgentOptions.ActorOptimizerOptions.LearnRate  = 1e-3;
-agent.AgentOptions.CriticOptimizerOptions.LearnRate = 5e-3;
+agent.AgentOptions.ExperienceHorizon                = 1024;
+agent.AgentOptions.MiniBatchSize                    = 512;
+agent.AgentOptions.NumEpoch                         = 10;
+agent.AgentOptions.ClipFactor                       = 0.2;
+
+agent.AgentOptions.EntropyLossWeight                = 1e-3;
+agent.AgentOptions.ActorOptimizerOptions.LearnRate  = 5e-04;
+agent.AgentOptions.CriticOptimizerOptions.LearnRate = 1e-03;
+
 
 assignin('base','agent', agent);
 
 
-% %% ============================================
-% % 7.1) PPO AGENT (default-nah)
 % % ============================================
+% 7.1) PPO AGENT (default-nah)
+% ============================================
 % initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
 % agent = rlPPOAgent(obsInfo, actInfo, initOpts);
 % 
-% % Nur modellabhängige Einstellung setzen
+% Nur modellabhängige Einstellung setzen
 % agent.AgentOptions.SampleTime = cfg.Ts_agent;
-% % agent.AgentOptions.ClipFactor = 0.99;
-% % agent.AgentOptions.EntropyLossWeight = 0;
-% % agent.AgentOptions.AdvantageEstimateMethod = 'finite-horizon';
-% % agent.AgentOptions.NumEpoch = 1;
 % 
 % assignin('base','agent', agent);
  
@@ -299,13 +301,13 @@ assignin('base','agent', agent);
 % 
 % assignin('base','agent', agent);
 % 
-% %% ============================================
-% % 7.5) DDPG AGENT (default-nah)
 % % ============================================
+% 7.5) DDPG AGENT (default-nah)
+% ============================================
 % initOpts = rlAgentInitializationOptions('NumHiddenUnit', cfg.hiddenUnits);
 % agent = rlDDPGAgent(obsInfo, actInfo, initOpts);
 % 
-% % Nur modellabhängige Einstellung setzen
+% Nur modellabhängige Einstellung setzen
 % agent.AgentOptions.SampleTime = cfg.Ts_agent;
 % 
 % assignin('base','agent', agent);
@@ -331,6 +333,10 @@ catch ME
     warning("%s: %s", ME.identifier, ME.message);
 end
 
+if isempty(gcp('nocreate'))
+    parpool('local', 8);
+end
+
 %% =========================
 % 9) Training Options + Train
 % =========================
@@ -343,10 +349,15 @@ trainOpts = rlTrainingOptions( ...
     'MaxStepsPerEpisode',         floor(cfg.T/cfg.Ts_agent), ...
     'ScoreAveragingWindowLength', 25, ...  
     'StopTrainingCriteria',       "AverageReward", ...  
-    'StopTrainingValue',          100000, ...
+    'StopTrainingValue',          1850, ...
     'Plots',                      "training-progress", ...
-    'StopOnError',                "off" ...
+    'StopOnError',                "off",  ...
+    'UseParallel', true, ...
+    'ParallelizationOptions', rl.option.ParallelTraining(...
+        'Mode', 'async') ...
 );
+
+
 
 % % Besten Agenten speichern (empfohlen!)
 % saveDirRun = fullfile(cfg.saveDir, cfg.saveTag + "_" + string(datestr(now,'yyyymmdd_HHMMSS')));

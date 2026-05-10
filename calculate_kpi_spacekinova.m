@@ -15,7 +15,7 @@ clc; clear; close all;
 %  =========================
 
 % --- Anzahl Evaluations-Episoden ---
-N_episodes = 50;
+N_episodes = 5;
 
 % --- Simulink-Modell ---
 mdl = 'SpaceKinova_MotionProfile';
@@ -29,7 +29,7 @@ nJ = 7;
 
 % --- Sicherheits-/Spec-Parameter ---
 d_safe   = 0.02;          % Mindestabstand [m]
-dt_agent = 0.025;         % Agent Rate [s] (40 Hz)
+dt_agent = 0.1;         % Agent Rate [s] (40 Hz)
 
 % --- Kinova Gen3 Drehmomentlimits (Nominal/Continuous) ---
 % Grosse Aktuatoren J1-J4: 32 Nm, Kleine Aktuatoren J5-J7: 13 Nm
@@ -50,13 +50,17 @@ safetyFactor = 0.7;
 dq_max = safetyFactor * dqLim;
 
 % --- Simulationszeit ---
+% T        = 8.5;           % Episodendauer [s]
+% Ts       = 0.005;         % Simulations-FixedStep [s]
+% Ts_agent = 0.025;         % Agent SampleTime [s]
 T        = 8.5;           % Episodendauer [s]
-Ts       = 0.005;         % Simulations-FixedStep [s]
-Ts_agent = 0.025;         % Agent SampleTime [s]
+Ts       = 0.02;         % Simulations-FixedStep [s]
+Ts_agent = 0.1;         % Agent SampleTime [s]
 
 % --- Referenztrajektorie (Kreis) ---
 r      = 0.2;                              % Radius [m]
 center = [0.0, -0.025, 1.687 - r];        % Mittelpunkt
+%center = [0.479, -0.005, 0.936 + r]; 
 omega  = pi / T;                           % Winkelgeschwindigkeit
 yConst = 0;                                % konstante y-Aenderung
 
@@ -90,7 +94,45 @@ z = center(3) + r * cos(omega * t);
 traj = [x(:), y(:), z(:)];
 
 dt_traj = mean(diff(t));
-vref    = [zeros(1, 3); diff(traj) / dt_traj];
+vref    = [zeros(1, 3); diff(traj) / dt_traj]; 
+% 
+% % --- Die 3 Eckpunkte (identisch zum Halbkreis) ---
+% % t=0   : Startpunkt  (oben)
+% P1 = [center(1),            center(2), center(3) + r];
+% % t=T/2 : Mittelpunkt  (rechts, Apex)
+% P2 = [center(1) + r,    center(2), center(3)         ];
+% % t=T   : Endpunkt    (unten)
+% P3 = [center(1),            center(2), center(3) - r];
+% 
+% % --- Piecewise-linear Interpolation ---
+% T_half = T / 2;
+% traj = zeros(numel(t), 3);
+% 
+% for k = 1:numel(t)
+%     if t(k) <= T_half
+%         % Segment 1: P1 -> P2
+%         s = t(k) / T_half;          % s: 0 -> 1
+%         traj(k,:) = (1-s)*P1 + s*P2;
+%     else
+%         % Segment 2: P2 -> P3
+%         s = (t(k) - T_half) / T_half;  % s: 0 -> 1
+%         traj(k,:) = (1-s)*P2 + s*P3;
+%     end
+% end
+% 
+% % --- Geschwindigkeitsreferenz (analytisch, stückweise konstant) ---
+% v_seg1 = (P2 - P1) / T_half;   % konstante Geschwindigkeit Segment 1
+% v_seg2 = (P3 - P2) / T_half;   % konstante Geschwindigkeit Segment 2
+% 
+% vref = zeros(numel(t), 3);
+% for k = 1:numel(t)
+%     if t(k) <= T_half
+%         vref(k,:) = v_seg1;
+%     else
+%         vref(k,:) = v_seg2;
+%     end
+% end
+% vref(1,:) = [0 0 0];  % erster Zeitschritt: Stillstand
 
 EE_ref  = timeseries(traj, t);
 EE_vref = timeseries(vref, t);
@@ -130,7 +172,8 @@ assignin('base', 'q_des', q_des);
 %  5) AGENT LADEN
 %  =========================
 % ===== HIER DEN DATEINAMEN DES TRAINIERTEN AGENTEN ANPASSEN =====
-agentFile = 'SpaceKinova_PPO_agent_motionprofile.mat';
+%agentFile = 'SavedAgents/MotionProfile/CDR/PPO/Trajectory2.mat';
+agentFile = 'SavedAgents/MotionProfile/Circle/PPO/ppo_10hz.mat';
 assert(isfile(agentFile), 'Agent-Datei nicht gefunden: %s', agentFile);
 load(agentFile, 'agent');
 fprintf('Agent geladen: %s\n', agentFile);
@@ -179,114 +222,132 @@ kpi = computeKPIsFromLogs(logsouts, params);
 disp('--- KPI-Ergebnisse ---');
 disp(kpi);
 
-% %% =========================
-% %  9) VISUALISIERUNG: Soll- vs. Ist-EE-Trajektorie (gemittelt)
-% %  =========================
-% 
-% % --- Gemeinsamer Zeitvektor (aus Episode 1) ---
-% ep0        = 1;
-% EE_ts0     = logsouts{ep0}.getElement('p_EE').Values;
-% t_common   = EE_ts0.Time(:);
-% Nt         = numel(t_common);
-% 
-% % --- Container ---
-% EE_ref_all = nan(Nt, 3, N_episodes);
-% EE_ist_all = nan(Nt, 3, N_episodes);
-% 
-% for ep = 1:N_episodes
-%     logsout = logsouts{ep};
-% 
-%     EE_ts   = logsout.getElement('p_EE').Values;
-%     t_ep    = EE_ts.Time(:);
-%     ee_ep   = reshape_time_series(EE_ts.Data);          % (Ne x 3)
-% 
-%     ref_ep  = interp1(EE_ref.Time, EE_ref.Data, t_ep, 'linear', 'extrap');
-% 
-%     EE_ref_all(:,:,ep) = interp1(t_ep, ref_ep, t_common, 'linear', 'extrap');
-%     EE_ist_all(:,:,ep) = interp1(t_ep, ee_ep,  t_common, 'linear', 'extrap');
-% end
-% 
-% EE_ref_mean = mean(EE_ref_all, 3, 'omitnan');
-% EE_ist_mean = mean(EE_ist_all, 3, 'omitnan');
-% EE_ist_std  = std(EE_ist_all, 0, 3, 'omitnan');
-% 
-% % --- Plot: XZ-Ebene (da Kreisbahn in x-z liegt) ---
-% figure('Name', 'EE-Trajektorie XZ (gemittelt)');
-% plot(EE_ref_mean(:,1), EE_ref_mean(:,3), 'b-', 'LineWidth', 1.5); hold on;
-% plot(EE_ist_mean(:,1), EE_ist_mean(:,3), 'r--', 'LineWidth', 1.5);
-% grid on; axis equal;
-% xlabel('x [m]'); ylabel('z [m]');
-% legend('Soll-EE-Bahn', 'Mittlere Ist-EE-Bahn', 'Location', 'best');
-% title(sprintf('Endeffektortrajektorie (XZ) – Mittel ueber %d Episoden', N_episodes));
+%% =========================
+%  9) VISUALISIERUNG: Soll- vs. Ist-EE-Trajektorie (gemittelt)
+%  =========================
+
+% --- Gemeinsamer Zeitvektor (aus Episode 1) ---
+ep0        = 1;
+EE_ts0     = logsouts{ep0}.getElement('p_EE').Values;
+t_common   = EE_ts0.Time(:);
+Nt         = numel(t_common);
+
+% --- Container ---
+EE_ref_all = nan(Nt, 3, N_episodes);
+EE_ist_all = nan(Nt, 3, N_episodes);
+
+for ep = 1:N_episodes
+    logsout = logsouts{ep};
+
+    EE_ts   = logsout.getElement('p_EE').Values;
+    t_ep    = EE_ts.Time(:);
+    ee_ep   = reshape_time_series(EE_ts.Data);          % (Ne x 3)
+
+    ref_ep  = interp1(EE_ref.Time, EE_ref.Data, t_ep, 'linear', 'extrap');
+
+    EE_ref_all(:,:,ep) = interp1(t_ep, ref_ep, t_common, 'linear', 'extrap');
+    EE_ist_all(:,:,ep) = interp1(t_ep, ee_ep,  t_common, 'linear', 'extrap');
+end
+
+EE_ref_mean = mean(EE_ref_all, 3, 'omitnan');
+EE_ist_mean = mean(EE_ist_all, 3, 'omitnan');
+EE_ist_std  = std(EE_ist_all, 0, 3, 'omitnan');
+
+% --- Plot: XZ-Ebene (da Kreisbahn in x-z liegt) ---
+figure('Name', 'EE-Trajektorie XZ (gemittelt)');
+plot(EE_ref_mean(:,1), EE_ref_mean(:,3), 'b-', 'LineWidth', 1.5); hold on;
+plot(EE_ist_mean(:,1), EE_ist_mean(:,3), 'r--', 'LineWidth', 1.5);
+grid on; axis equal;
+xlabel('x [m]'); ylabel('z [m]');
+legend('Soll-EE-Bahn', 'Mittlere Ist-EE-Bahn', 'Location', 'best');
+title(sprintf('Endeffektortrajektorie (XZ) – Mittel ueber %d Episoden', N_episodes));
+
+%% =========================
+%  10) VISUALISIERUNG: Basis-Orientierung (Quaternion, gemittelt)
+%  =========================
+
+ep0        = 1;
+EE_ts0     = logsouts{ep0}.getElement('p_EE').Values;
+t_common   = EE_ts0.Time(:);
+Nt         = numel(t_common);
+
+% --- Container: (Nt x 4 x N) ---
+Q_all = nan(Nt, 4, N_episodes);
+
+for ep = 1:N_episodes
+    logsout = logsouts{ep};
+    q_ts    = logsout.getElement('basis_ori').Values;
+    t_ep    = q_ts.Time(:);
+    q_ep    = reshape_time_series(q_ts.Data);            % (Ne x 4) [w x y z]
+
+    Q_all(:,:,ep) = interp1(t_ep, q_ep, t_common, 'linear', 'extrap');
+end
+
+% --- Quaternionen sign-konsistent machen (q und -q sind gleich) ---
+q_ref = squeeze(Q_all(:,:,1));
+for ep = 1:N_episodes
+    q_ep = squeeze(Q_all(:,:,ep));
+    dots = sum(q_ep .* q_ref, 2);
+    flip = dots < 0;
+    q_ep(flip,:) = -q_ep(flip,:);
+    Q_all(:,:,ep) = q_ep;
+end
+
+Q_mean = mean(Q_all, 3, 'omitnan');
+Q_mean = Q_mean ./ vecnorm(Q_mean, 2, 2);   % normalisieren
+
+figure('Name', 'Basis-Orientierung (gemittelt)');
+plot(t_common, Q_mean(:,1), 'LineWidth', 1.5); hold on;
+plot(t_common, Q_mean(:,2), 'LineWidth', 1.5);
+plot(t_common, Q_mean(:,3), 'LineWidth', 1.5);
+plot(t_common, Q_mean(:,4), 'LineWidth', 1.5);
+grid on;
+xlabel('Zeit [s]'); ylabel('Normiertes Quaternion');
+legend('w', 'x', 'y', 'z', 'Location', 'best');
+xlim([0, T+0.5]); ylim([-0.2, 1.2]);
+title(sprintf('Basis-Orientierung – Mittel ueber %d Episoden', N_episodes));
 
 % %% =========================
-% %  10) VISUALISIERUNG: Basis-Orientierung (Quaternion, gemittelt)
+% %  11) VISUALISIERUNG: Einzelepisode (optional)
 % %  =========================
 % 
-% % --- Container: (Nt x 4 x N) ---
-% Q_all = nan(Nt, 4, N_episodes);
-% 
-% for ep = 1:N_episodes
-%     logsout = logsouts{ep};
-%     q_ts    = logsout.getElement('basis_ori').Values;
-%     t_ep    = q_ts.Time(:);
-%     q_ep    = reshape_time_series(q_ts.Data);            % (Ne x 4) [w x y z]
-% 
-%     Q_all(:,:,ep) = interp1(t_ep, q_ep, t_common, 'linear', 'extrap');
-% end
-% 
-% % --- Quaternionen sign-konsistent machen (q und -q sind gleich) ---
-% q_ref = squeeze(Q_all(:,:,1));
-% for ep = 1:N_episodes
-%     q_ep = squeeze(Q_all(:,:,ep));
-%     dots = sum(q_ep .* q_ref, 2);
-%     flip = dots < 0;
-%     q_ep(flip,:) = -q_ep(flip,:);
-%     Q_all(:,:,ep) = q_ep;
-% end
-% 
-% Q_mean = mean(Q_all, 3, 'omitnan');
-% Q_mean = Q_mean ./ vecnorm(Q_mean, 2, 2);   % normalisieren
-% 
-% figure('Name', 'Basis-Orientierung (gemittelt)');
-% plot(t_common, Q_mean(:,1), 'LineWidth', 1.5); hold on;
-% plot(t_common, Q_mean(:,2), 'LineWidth', 1.5);
-% plot(t_common, Q_mean(:,3), 'LineWidth', 1.5);
-% plot(t_common, Q_mean(:,4), 'LineWidth', 1.5);
-% grid on;
-% xlabel('Zeit [s]'); ylabel('Normiertes Quaternion');
-% legend('w', 'x', 'y', 'z', 'Location', 'best');
-% xlim([0, T+0.5]); ylim([-0.2, 1.2]);
-% title(sprintf('Basis-Orientierung – Mittel ueber %d Episoden', N_episodes));
+% --- Plot: Soll vs. Ist fuer Episode 1 ---
+epIdx   = 1;
+logsout = logsouts{epIdx};
 
-% % %% =========================
-% % %  11) VISUALISIERUNG: Einzelepisode (optional)
-% % %  =========================
-% % 
-% % --- Plot: Soll vs. Ist fuer Episode 1 ---
-% epIdx   = 1;
-% logsout = logsouts{epIdx};
-% 
-% EE_ts      = logsout.getElement('p_EE').Values;
-% t_ep       = EE_ts.Time;
-% EE_ist_ep  = reshape_time_series(EE_ts.Data);
-% EE_ref_ep  = interp1(EE_ref.Time, EE_ref.Data, t_ep, 'linear', 'extrap');
-% 
-% figure('Name', sprintf('EE-Trajektorie Episode %d', epIdx));
-% subplot(1,2,1);
-% plot(EE_ref_ep(:,1), EE_ref_ep(:,3), 'b-', 'LineWidth', 1.2); hold on;
-% plot(EE_ist_ep(:,1), EE_ist_ep(:,3), 'r--', 'LineWidth', 1.2);
-% grid on; axis equal;
-% xlabel('x [m]'); ylabel('z [m]');
-% legend('Soll', 'Ist', 'Location', 'best');
-% title(sprintf('XZ-Ebene – Episode %d', epIdx));
-% 
-% subplot(1,2,2);
-% err_norm = vecnorm(EE_ref_ep - EE_ist_ep, 2, 2);
-% plot(t_ep, err_norm * 1000, 'k-', 'LineWidth', 1.2);
-% grid on;
-% xlabel('Zeit [s]'); ylabel('Positionsfehler [mm]');
-% title(sprintf('EE-Positionsfehler – Episode %d', epIdx));
+EE_ts      = logsout.getElement('p_EE').Values;
+t_ep       = EE_ts.Time;
+EE_ist_ep  = reshape_time_series(EE_ts.Data);
+EE_ref_ep  = interp1(EE_ref.Time, EE_ref.Data, t_ep, 'linear', 'extrap');
+
+figure('Name', sprintf('EE-Trajektorie Episode %d', epIdx));
+subplot(1,2,1);
+plot(EE_ref_ep(:,1), EE_ref_ep(:,3), 'b-', 'LineWidth', 1.2); hold on;
+plot(EE_ist_ep(:,1), EE_ist_ep(:,3), 'r--', 'LineWidth', 1.2);
+grid on; axis equal;
+xlabel('x [m]'); ylabel('z [m]');
+legend('Soll', 'Ist', 'Location', 'best');
+title(sprintf('XZ-Ebene – Episode %d', epIdx));
+
+subplot(1,2,2);
+err_norm = vecnorm(EE_ref_ep - EE_ist_ep, 2, 2);
+plot(t_ep, err_norm * 1000, 'k-', 'LineWidth', 1.2);
+grid on;
+xlabel('Zeit [s]'); ylabel('Positionsfehler [mm]');
+title(sprintf('EE-Positionsfehler – Episode %d', epIdx));
+
+% Signal extrahieren
+dq_ts = logsouts{1}.getElement('dq_cmd').Values;
+
+% Zeit und Daten rausziehen
+t      = dq_ts.Time;                          % [1701x1]
+dq_raw = dq_ts.Data;                          % [7x1x1701]
+
+% In vernünftige Form bringen (deine reshape Funktion ist schon da!)
+dq = reshape_time_series(dq_raw);             % [1701x7]
+
+% Speichern
+save('dq_cmd_non-singular_10hz.mat', 't', 'dq');
 
 %% =========================
 %  HILFSFUNKTIONEN
