@@ -1,205 +1,197 @@
-# Sim-to-Real SpaceRobot Kinova Gen3
+# Sim-to-Real Reinforcement Learning for SpaceKinova
 
-Reinforcement-Learning-basierte Trajektorienverfolgung fuer einen Kinova Gen3 7-DOF Roboterarm auf einer frei schwebenden Wuerfelplattform (Weltraum-Szenario). Das Projekt nutzt einen Sim-to-Real-Ansatz: Training in MATLAB/Simulink, Uebertragung auf echte Hardware via ROS.
+This repository contains the MATLAB/Simulink implementation for a bachelor thesis on sim-to-real transfer of a reinforcement-learning-based Cartesian motion planner for a 7-DOF Kinova Gen3 manipulator mounted on a free-floating satellite-like base.
 
-## Ueberblick
+The project is simulation-first: the tracked repository already includes the SpaceKinova URDF, Simulink models, training/evaluation scripts, trained agents, deployment utilities, and figures needed to reproduce the core workflow without checking out external Kinova description packages.
 
-| Komponente | Beschreibung |
+![Sim-to-real pipeline](Figures/Schemata/Gesamtdiagramm_SimToRealPipeline.png)
+
+## What This Project Does
+
+The system models a Kinova Gen3 7-DOF arm on a free-floating cubic base and trains reinforcement learning policies to track Cartesian end-effector trajectories. The simulation includes coupled base-arm dynamics, trajectory references, action filtering, safety limits, and policy evaluation metrics.
+
+The repository also contains the optional hardware-side tooling used to test and diagnose deployment on a real Kinova Gen3 through the MATLAB/Kinova MEX interface. Hardware execution is intentionally separated from the default simulation workflow.
+
+## Key Contributions
+
+- Extended a previous 4-DOF free-floating space robot setup to an industrial 7-DOF Kinova Gen3 model.
+- Built and compared three Simulink model variants: torque input, motion-profile input, and a PD/velocity-control variant.
+- Evaluated six continuous-control RL algorithms: PPO, TRPO, DDPG, TD3, SAC, and PG.
+- Identified PPO as the strongest method for this setup in terms of tracking, base stability, and training robustness.
+- Added Bayesian hyperparameter optimization for PPO.
+- Implemented a Curriculum Domain Randomization framework for trajectory variation, mass/inertia uncertainty, actuator delay, and friction/damping perturbations.
+- Built a safety-focused hardware deployment layer with saturation, filtering, rate limiting, soft-limit braking, fault checks, out-of-distribution stopping, watchdogs, and dry-run/preflight gates.
+- Diagnosed a practical sim-to-real bottleneck: the closed-loop MATLAB/MEX/Kortex deployment path reached only about 9.3 Hz, while the policy had been trained for a faster loop. This sample-rate mismatch is a central hardware result of the thesis.
+
+## Repository Contents
+
+| Path | Purpose |
 |---|---|
-| **Roboter** | Kinova Gen3 7-DOF auf Wuerfelbasis (65 kg, 1x1x1 m) |
-| **RL-Algorithmus** | PPO (Proximal Policy Optimization) |
-| **Simulation** | Simulink + Simscape Multibody |
-| **Hardware-Interface** | ROS 1 (kortex_driver, Noetic) |
-| **Freiheitsgrade** | 13 total (6 DOF Basis + 7 DOF Arm) |
-| **Agent-Rate** | 40 Hz (= Kinova High-Level Servo Rate) |
+| `SpaceKinova.urdf` | Combined robot description for the Kinova Gen3 on a free-floating cube base. |
+| `SpaceKinovaDynamic.m` | Main PPO training script for the SpaceKinova simulation. |
+| `SpaceKinova_CDR.m` | PPO training script with Curriculum Domain Randomization. |
+| `calculate_kpi_spacekinova.m` | Evaluation script for running episodes and computing KPIs. |
+| `SpaceKinova_MotionProfile.slx` | Main motion-profile Simulink training model. |
+| `SpaceKinova_MotionProfile_CDR.slx` | CDR-oriented Simulink model variant. |
+| `SpaceKinova_Torque.slx` | Torque-input model variant used for algorithm comparison. |
+| `SpaceKinova_PD-Control.slx` | PD/velocity-control model variant. |
+| `SavedAgents/` | Selected trained agents used for evaluation and comparison. |
+| `Deploy_Scripts/` | Optional hardware playback, timing diagnosis, and deployment scripts. |
+| `Figures/` | Thesis and README figures for simulation, CDR, and hardware results. |
 
-## Kinova Gen3 7-DOF Spezifikationen
+`ros_kortex/` is not part of this repository and is not required for the normal simulation or evaluation workflow. The included `SpaceKinova.urdf` is the tracked model used by the MATLAB scripts.
 
-| Joint | Typ | Positionslimit [rad] | Geschwindigkeit [rad/s] | Drehmoment nominal [Nm] | Drehmoment peak [Nm] |
-|-------|-----|---------------------|------------------------|------------------------|---------------------|
-| J1 | continuous | +/-2pi (Software) | 1.3963 | 32 | 74 |
-| J2 | revolute | +/-2.41 | 1.3963 | 32 | 74 |
-| J3 | continuous | +/-2pi (Software) | 1.3963 | 32 | 74 |
-| J4 | revolute | +/-2.66 | 1.3963 | 32 | 74 |
-| J5 | revolute | +/-2.23 | 1.2218 | 13 | 34 |
-| J6 | revolute | +/-2.01 | 1.2218 | 13 | 34 |
-| J7 | continuous | +/-2pi (Software) | 1.2218 | 13 | 34 |
+## Getting Started
 
-Quellen: [ros_kortex URDF](https://github.com/Kinovarobotics/ros_kortex), Kinova Gen3 User Guide
+### Requirements
 
-## Projektstruktur
+Use MATLAB with the following products installed:
 
-```
-Sim_to_real_spacerobot_kinova/
-  SpaceKinovaDynamic_PPO.m    - RL-Training (PPO) in Simulink
-  deploy_agent_kinova.m       - Deployment: Agent auf echtem Kinova Gen3
-  kinova_test.m               - Hardware-Velocity-Test via ROS
-  make_spacekinova_urdf.m     - URDF-Generierung (Wuerfelbasis + Kinova)
-  SpaceRobot.slx              - Simulink-Modell mit Physik-Simulation
-  SpaceKinova_TEMPLATE.urdf   - URDF-Referenz-Template
-  SpaceKinova_README.txt      - URDF-Generierungsanleitung
-```
-
-## Voraussetzungen
-
-**MATLAB R2020b oder neuer** mit folgenden Toolboxen:
-
-- Reinforcement Learning Toolbox
-- Robotics System Toolbox
 - Simulink
-- Simscape / Simscape Multibody
-- ROS Toolbox (fuer Hardware-Tests)
+- Simscape and Simscape Multibody
+- Robotics System Toolbox
+- Reinforcement Learning Toolbox
+- Parallel Computing Toolbox, optional but useful for training
 
-**Hardware (fuer Sim-to-Real):**
+For optional hardware experiments, you additionally need:
 
-- Kinova Gen3 7-DOF Roboterarm
-- ROS 1 Noetic mit `kortex_driver`
-- Ethernet-Verbindung zum Kinova (Standard-IP: 192.168.1.10)
+- A Kinova Gen3 7-DOF arm
+- Robotics System Toolbox Support Package for KINOVA Gen3 Manipulators
+- The Kinova/MATLAB MEX interface available on the MATLAB path
+- A safe physical setup with emergency stop, clear workspace, and network access to the robot
 
-## Schnellstart
+### Basic Setup
 
-### Schritt 1: URDF generieren
-
-Eine Kinova-URDF-Datei (z.B. `kinova_gen3.urdf` aus dem `ros_kortex` Paket) muss vorhanden sein. Dann:
-
-```matlab
-make_spacekinova_urdf("kinova_gen3.urdf", "SpaceKinova.urdf", ...
-    "Prefix", "kinova_", ...
-    "MountXYZ", [0 0 0.5]);
-```
-
-Die Funktion validiert die generierte URDF automatisch und zeigt Anzahl Bodies/DOF an.
-
-### Schritt 2: RL-Agent trainieren (Simulation)
+Clone the repository and open MATLAB in the repository root:
 
 ```matlab
-SpaceKinovaDynamic_PPO
+cd path/to/this/repository
+addpath(genpath(pwd))
 ```
 
-Das Skript:
-1. Laedt die generierte URDF und berechnet die Referenztrajektorie (Kreis, r=0.4 m)
-2. Loest die inverse Kinematik fuer gewuenschte Gelenkwinkel
-3. Erstellt die RL-Umgebung (29D Observation, 7D Action)
-4. Trainiert einen PPO-Agenten (max. 1000 Episoden, 40 Hz)
-5. Speichert den besten Agenten automatisch in `savedAgents_spacekinova/`
-
-**Wichtig:** Das Simulink-Modell muss vorher angepasst sein:
-- Robot-Subsystem nutzt `SpaceKinova.urdf`
-- `RL_Agent`-Block existiert unter `mdl/RL_Agent` mit Sample Time = 0.025 s
-- Saturation-Bloecke nutzen die 7x1 Vektoren `dq_max` und `tau_max` aus dem Workspace
-- Reward/Done und Collision-Monitor sind auf 7 Joints ausgelegt
-
-### Schritt 3: Hardware-Test (Kinova via ROS)
+Open the main model if you want to inspect the environment:
 
 ```matlab
-kinova_test
+open_system("SpaceKinova_MotionProfile.slx")
 ```
 
-Testet jeden Joint einzeln mit kleinen Geschwindigkeitskommandos:
-- Per-Joint Velocity-Saettigung (20% der echten Limits)
-- Watchdog-Timeout (100 ms)
-- Automatischer Stopp bei CTRL+C (`onCleanup`)
-- Manuell bestaetigt pro Joint (ENTER)
+The tracked `SpaceKinova.urdf` is used directly by the scripts. No external Kinova URDF checkout is needed for the included simulation workflow.
 
-### Schritt 4: Agent auf Hardware deployen
+## Running Simulation Training
+
+Run the baseline PPO training script:
 
 ```matlab
-deploy_agent_kinova
+SpaceKinovaDynamic
 ```
 
-Workflow:
-1. Trainierter Agent wird automatisch aus `savedAgents_spacekinova/` geladen
-2. **Dry-Run Modus (Standard):** Kommandos werden angezeigt, NICHT gesendet
-3. Dry-Run Ausgaben pruefen: Geschwindigkeiten plausibel? Positionsfehler sinkt?
-4. `cfg.dryRun = false` setzen fuer echte Ausfuehrung
-5. Agent steuert Kinova Gen3 in Echtzeit (40 Hz)
-6. Log wird automatisch gespeichert mit Tracking-Metriken
+This script prepares the reference trajectory, imports `SpaceKinova.urdf`, solves inverse kinematics for the trajectory seed, configures the RL observation/action spaces, and trains a PPO agent in `SpaceKinova_MotionProfile.slx`.
 
-## Sicherheitshinweise (Sim-to-Real)
+Run the Curriculum Domain Randomization training script:
 
-**WARNUNG:** Vor der Ausfuehrung auf echter Hardware:
+```matlab
+SpaceKinova_CDR
+```
 
-1. **Geschwindigkeitslimits:** Der RL-Agent arbeitet mit 70% der echten Kinova-Limits (Sicherheitsfaktor 0.7). NIEMALS den Sicherheitsfaktor auf >0.8 erhoehen.
-2. **Dry-Run zuerst:** `deploy_agent_kinova.m` startet im Dry-Run-Modus. Erst nach Verifizierung der Ausgaben `cfg.dryRun = false` setzen.
-3. **E-Stop:** Immer den Not-Aus-Schalter bereithalten.
-4. **Arbeitsraum freiraeumen:** Keine Objekte im Arbeitsbereich des Roboters.
-5. **Frequenz-Match:** Der Agent laeuft bei 40 Hz, passend zum Kinova High-Level Servo.
-6. **Basis-Geschwindigkeit:** Im Training ist die Basis frei schwebend. Auf echter Hardware ist die Basis fest -> v_base = w_base = [0,0,0]. Der Agent lernt dies durch Domain Randomization.
-7. **Ersttest:** Immer zuerst `kinova_test.m` ausfuehren, um ROS-Verbindung zu validieren.
-8. **Soft-Limits:** Das Deployment-Skript bremst automatisch, wenn ein Gelenk sich 10 Grad vor seinem Limit befindet.
+`SpaceKinova_CDR.m` includes switches for trajectory randomization, mass/inertia perturbation, actuator delay, friction/damping variation, and start-configuration randomization. Some CDR features require matching Simulink-side parameterization; keep feature flags disabled unless the corresponding model blocks are connected.
 
-## RL-Umgebung Details
+The scripts currently keep the agent-save blocks commented out. The trained `agent` and `trainingStats` remain available in the MATLAB workspace after a run. Re-enable the save block in the script if you want to persist new training results.
 
-### Observation Space (29 Dimensionen)
+## Evaluating Trained Agents
 
-| Signal | Dimension | Beschreibung |
-|---|---|---|
-| Position Error | 3 | Endeffector-Positionsfehler [m] |
-| Velocity Error | 3 | Endeffector-Geschwindigkeitsfehler [m/s] |
-| Joint Angles (q) | 7 | Gelenkwinkel [rad], per-Joint Limits |
-| Joint Velocities (dq) | 7 | Gelenkgeschwindigkeiten [rad/s], per-Joint Limits |
-| Base Linear Velocity | 3 | Basisgeschwindigkeit [m/s] |
-| Base Angular Velocity | 3 | Basis-Drehgeschwindigkeit [rad/s] |
-| Orientation Error | 3 | Orientierungsfehler [rad] |
+Selected trained agents are already committed under `SavedAgents/`. To run the KPI evaluation with the default configured agent:
 
-### Action Space (7 Dimensionen)
+```matlab
+calculate_kpi_spacekinova
+```
 
-Gelenkgeschwindigkeitskommandos `dq_cmd`, per-Joint begrenzt auf 70% der Kinova-Limits:
-- J1-J4: +/- 0.977 rad/s (grosse Aktuatoren)
-- J5-J7: +/- 0.855 rad/s (kleine Aktuatoren)
+The evaluation script loads a trained agent, runs repeated Simulink episodes, and computes performance indicators for:
 
-### ROS-Interface (kortex_driver)
+- end-effector tracking
+- base disturbance
+- energy/power use
+- command smoothness
+- return and early-termination behavior
 
-| Parameter | Wert |
+By default, the script points to a committed agent file:
+
+```matlab
+SavedAgents/MotionProfile/Circle/PPO/ppo_10hz.mat
+```
+
+You can change `agentFile` inside `calculate_kpi_spacekinova.m` to evaluate another committed or newly trained `.mat` agent.
+
+## Optional Hardware Deployment
+
+Hardware execution is not the default path. It requires a real Kinova Gen3, the Kinova/MATLAB MEX interface, and careful safety preparation.
+
+Useful hardware scripts include:
+
+| Script | Purpose |
 |---|---|
-| Velocity-Topic | `/my_gen3/in/joint_velocity` |
-| Message-Typ | `kortex_driver/Base_JointSpeeds` |
-| Joint Identifiers | 0-basiert (0..6) |
-| Kontrollrate | 40 Hz (High-Level Servo) |
+| `Deploy_Scripts/kinova_test.m` | Safe per-joint velocity jog test through the MEX interface. |
+| `Deploy_Scripts/playback_variants.m` | Open-loop playback of logged joint-velocity trajectories. |
+| `Deploy_Scripts/analyze_tracking_error.m` | Offline analysis of playback runs and tracking errors. |
+| `Deploy_Scripts/deploy_agent_kinova_robust_timing.m` | Closed-loop policy deployment with robust timing diagnostics and safety checks. |
 
-### Referenztrajektorie
+Before sending any command to hardware, use dry-run/preflight checks, verify the workspace is clear, keep the emergency stop within reach, and start with conservative speed/duration settings.
 
-Kreisbahn in der x-y-Ebene:
-- Radius: 0.4 m
-- Periode: 8.5 s
-- Konstante z-Hoehe
+![Hardware setup](Figures/Deployment/hardware-setup.png)
 
-## URDF-Generierung
+## Results
 
-`make_spacekinova_urdf` kombiniert eine Kinova-URDF mit einer Wuerfelbasis:
+### PPO and Algorithm Comparison
 
-| Parameter | Default | Beschreibung |
-|---|---|---|
-| `Prefix` | `"kinova_"` | Praefix fuer Link-/Joint-Namen |
-| `MountXYZ` | `[0 0 0.5]` | Montageposition auf der Basis |
-| `MountRPY` | `[0 0 0]` | Montageorientierung |
-| `BaseSize` | `[1 1 1]` | Wuerfelabmessungen [m] |
-| `BaseMass` | `65` | Basismasse [kg] |
-| `BaseInertiaDiag` | `[10.833 10.833 10.833]` | Traegheitsmomente [kg*m^2] (korrekt fuer 65kg Wuerfel) |
+The thesis compared PPO, TRPO, DDPG, TD3, SAC, and PG on the 7-DOF SpaceKinova setup. PPO gave the best overall balance of tracking accuracy, base stability, and training robustness. In the reported 50-episode evaluation, PPO reached:
 
-## Simulink-Modell Anpassungen
+- mean squared end-effector tracking error: `0.0015 m^2`
+- maximum end-effector error: `0.1866 m`
+- mean base-orientation error: `0.0169 rad`
+- mean return: `638.8`
+- early-termination rate: `0`
 
-Das Simulink-Modell `SpaceRobot.slx` muss folgendermassen konfiguriert sein:
+Bayesian hyperparameter optimization further improved PPO performance on the triangle trajectory, increasing the mean return from `224.6` with default PPO settings to `1244` for the optimized configuration.
 
-1. **RL Agent Block:** Sample Time = `0.025` (oder Variable `Ts_agent`)
-2. **Saturation (dq_cmd):** Upper/Lower Limit = `dq_max` / `-dq_max` (7x1 Vektor aus Workspace)
-3. **Saturation (Torque):** Upper/Lower Limit = `tau_max` / `-tau_max` (7x1 Vektor aus Workspace)
-4. **Gelenkgrenzen:** `qLim_lower` und `qLim_upper` (7x1 Vektoren) statt skalarem `qLim_abs`
-5. **URDF-Referenz:** `SpaceKinova.urdf` (generiert durch `make_spacekinova_urdf`)
+![Optimized PPO trajectory](Figures/Simulation/optimized_ppo_circular_trajectoy_average.png)
 
-## Troubleshooting
+### Curriculum Domain Randomization
 
-**Roboter reagiert nicht auf ROS-Kommandos:**
-- Namespace pruefen: `rostopic list | grep my_gen3`
-- Topic: `/my_gen3/in/joint_velocity` (NICHT `/in/joint_speeds`)
-- Message-Typ: `kortex_driver/Base_JointSpeeds` (Noetic)
-- Joint IDs sind 0-basiert (0..6)
+The CDR framework gradually increases simulation diversity over four curriculum phases. It was designed to improve robustness against trajectory changes, mass/inertia uncertainty, actuator delay, and friction/damping variation.
 
-**IK-Konvergenz-Probleme:**
-- `ikWeights` anpassen (Position vs. Orientierung)
-- Andere `homeConfiguration` als Seed verwenden
+![CDR overview](Figures/Schemata/CDR-%C3%9Cbersicht.png)
 
-**Simulink-Fehler beim Training:**
-- Pruefen, ob alle `assignin`-Variablen im Base Workspace vorhanden sind
-- `RL_Agent`-Block-Pfad muss mit `cfg.agentBlk` uebereinstimmen
-- Saturation-Bloecke muessen 7x1 Vektoren akzeptieren (nicht Skalare)
+The main finding is that CDR is most valuable when the test disturbance differs meaningfully from the nominal training case. For example, trajectory randomization improved generalization to an unseen mirrored half-circle, while mass randomization produced consistent robustness gains under strong base-mass perturbation.
+
+### Hardware Diagnosis
+
+The hardware tests validated that the Kinova Gen3 can follow sent joint-velocity commands with high joint-space accuracy in open-loop experiments. The limiting issue appeared in closed-loop deployment: the full MATLAB/MEX loop with command sending, feedback reading, policy inference, filtering, and logging ran at about `9.3 Hz`, far below the intended training loop rate.
+
+![40 Hz vs 10 Hz hardware result](Figures/Deployment/40hz-vs-10hz_real.jpg)
+
+This means the observed closed-loop hardware behavior cannot be used as a clean verdict on the policy's real-world generalization. The implementation-level sample-rate mismatch itself is an important practical result: future deployment should either train for the achievable loop rate or move to a lower-latency control interface.
+
+## Limitations
+
+- The repository is centered on MATLAB/Simulink and requires the listed toolboxes.
+- Some scripts contain experiment-specific constants, selected agent paths, and commented save blocks that may need adjustment for new experiments.
+- Full hardware deployment is not plug-and-play from a fresh clone; it depends on a Kinova Gen3 setup and the external Kinova MEX interface.
+- The closed-loop real-hardware policy evaluation remains limited by the measured MATLAB/MEX/Kortex timing bottleneck.
+- Generated logs, local hardware runs, and external Kinova support files are intentionally not part of the tracked repository.
+
+## Citation / Thesis Context
+
+This repository accompanies the bachelor thesis:
+
+> Steven Patrick Ermisch, "Sim-to-Real-Uebertragung einer Reinforcement Learning getriebenen kartesischen Bewegungsplanung eines 7 DoF frei-schwebenden Weltraumroboters", Bachelor thesis, Frankfurt University of Applied Sciences, submitted May 1, 2026.
+
+BibTeX:
+
+```bibtex
+@thesis{ermisch2026spacekinova,
+  author = {Ermisch, Steven Patrick},
+  title = {Sim-to-Real-Uebertragung einer Reinforcement Learning getriebenen kartesischen Bewegungsplanung eines 7 DoF frei-schwebenden Weltraumroboters},
+  school = {Frankfurt University of Applied Sciences},
+  type = {Bachelor thesis},
+  year = {2026}
+}
+```
