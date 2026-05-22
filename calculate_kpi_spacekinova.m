@@ -85,16 +85,17 @@ assignin('base', 'isdone_init', isdone_init);
 %% =========================
 %  3) REFERENZTRAJEKTORIE ERZEUGEN
 %  =========================
-t = 0:Ts:T;
+% t = 0:Ts:T;
+% 
+% x = center(1) + r * sin(omega * t);
+% y = center(2) + yConst * t;
+% z = center(3) + r * cos(omega * t);
+% 
+% traj = [x(:), y(:), z(:)];
+% 
+% dt_traj = mean(diff(t));
+% vref    = [zeros(1, 3); diff(traj) / dt_traj]; 
 
-x = center(1) + r * sin(omega * t);
-y = center(2) + yConst * t;
-z = center(3) + r * cos(omega * t);
-
-traj = [x(:), y(:), z(:)];
-
-dt_traj = mean(diff(t));
-vref    = [zeros(1, 3); diff(traj) / dt_traj]; 
 % 
 % % --- Die 3 Eckpunkte (identisch zum Halbkreis) ---
 % % t=0   : Startpunkt  (oben)
