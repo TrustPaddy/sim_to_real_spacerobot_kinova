@@ -31,3 +31,10 @@
 *.pdf binary
 *.png binary
 *.xlsx binary
+
+## Projektdateien
+*.STL binary
+*.stl binary
+*.webp binary
+*.avi binary
+*.mp4 binary

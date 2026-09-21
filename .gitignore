@@ -1,40 +1,60 @@
-# Autosave files
+# ---- MATLAB / Simulink ----
+# Autosave und Backups
 *.asv
 *.m~
 *.autosave
 *.slx.r*
 *.mdl.r*
+*.original
+*.bak
 
-# Derived content-obscured files
-*.p
-
-# Compiled MEX files
-*.mex*
-
-# Packaged app and toolbox files
-*.mlappinstall
-*.mltbx
-
-# Deployable archives
-*.ctf
-
-# Generated helpsearch folders
-helpsearch*/
-
-# Code generation folders
+# Caches und generierter Code (setup_project.m legt beides in work/ ab)
+work/
 slprj/
 sccprj/
 codegen/
-
-# Cache files
 *.slxc
-
-# Cloud based storage dotfile
-.MATLABDriveTag
-
-# buildtool cache folder
+*.mex*
+*.p
+*.ctf
+*.mlappinstall
+*.mltbx
+helpsearch*/
 .buildtool/
-
-# SimBiology backup files
+.MATLABDriveTag
 *.sbproj.backup
 *.sbproj.bak
+
+# ---- Projektspezifisch ----
+# Lokales Archiv mit veralteten und projektfremden Dateien
+_archive/
+# Lokale Werkzeuge
+.claude/
+__pycache__/
+# Neue Trainingslaeufe (die Trainingsskripte speichern dorthin)
+savedAgents_*/
+# Von den Auswerte- und Hardware-Skripten erzeugte Dateien
+data/dq_cmd/dq_cmd_point.mat
+data/dq_cmd/dq_cmd_non-singular_10hz.mat
+data/dq_cmd/dq_cmd_fk_result.mat
+data/hardware/analysis_output/*
+!data/hardware/analysis_output/summary.csv
+data/hardware/deploy_logs/deploy_log_*.mat
+data/hardware/kinova_velocity_playback_log.mat
+# Videos
+*.avi
+*.mp4
+
+# ---- Externe Kinova-Beschreibung (github.com/Kinovarobotics/ros_kortex) ----
+# Im Repo liegen nur die Gen3-Meshes, die die Simulink-Modelle laden, und die Lizenz.
+ros_kortex/*
+!ros_kortex/LICENSE
+!ros_kortex/kortex_description/
+ros_kortex/kortex_description/*
+!ros_kortex/kortex_description/arms/
+ros_kortex/kortex_description/arms/*
+!ros_kortex/kortex_description/arms/gen3/
+ros_kortex/kortex_description/arms/gen3/*
+!ros_kortex/kortex_description/arms/gen3/7dof/
+ros_kortex/kortex_description/arms/gen3/7dof/*
+!ros_kortex/kortex_description/arms/gen3/7dof/meshes/

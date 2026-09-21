@@ -1,229 +1,180 @@
 # Sim-to-Real Reinforcement Learning for SpaceKinova
 
-This repository contains the MATLAB/Simulink implementation for a bachelor thesis on sim-to-real transfer of a reinforcement-learning-based Cartesian motion planner for a 7-DOF Kinova Gen3 manipulator mounted on a free-floating satellite-like base.
+MATLAB/Simulink code, trained agents and hardware logs for training reinforcement-learning (RL) policies on a
+simulated 7-DOF Kinova Gen3 arm mounted on a free-floating cube base ("SpaceKinova"), and for deploying them on a
+table-mounted Kinova Gen3.
 
-The project is simulation-first: the tracked repository already includes the SpaceKinova URDF, Simulink models, training/evaluation scripts, trained agents, deployment utilities, and figures needed to reproduce the core workflow without checking out external Kinova description packages.
+The work started as a bachelor thesis at Frankfurt University of Applied Sciences (see [Citation](#citation)). It
+covers two tasks, Cartesian half-circle tracking and set-point attainment (point-to-point reaching). It also includes
+a comparison of six RL algorithms, Bayesian hyperparameter tuning of PPO, curriculum domain randomization (CDR), and a
+hardware study of the control-loop rate that the Kinova high-level API reaches from MATLAB.
 
 ![Sim-to-real pipeline](Figures/Schemata/Gesamtdiagramm_SimToRealPipeline.png)
 
-## What This Project Does
+## Repository layout
 
-The system models a Kinova Gen3 7-DOF arm on a free-floating cubic base and trains reinforcement learning policies for two task families:
+```
+setup_project.m      one-time setup per MATLAB session (path, working folder, Simulink cache)
+robot/               SpaceKinova URDF, plain Gen3 URDF, URDF generator
+models/              Simulink/Simscape Multibody models
+training/            training scripts
+evaluation/          simulation KPI scripts
+hardware/
+  deploy/            closed-loop deployment of a trained agent on the real Gen3
+  playback/          open-loop playback of logged joint-velocity commands, jog tests
+  analysis/          offline analysis of hardware and simulation runs
+utils/               sk_path (repository paths), run_logger (numbered run files)
+SavedAgents/         trained agents (.mat, variable "agent")
+data/
+  dq_cmd/            logged simulation commands used as playback input
+  hardware/          hardware and simulation run logs, KPI summaries
+Figures/             figures from the thesis
+ros_kortex/          Gen3 meshes from Kinova's ros_kortex (only the files the models need)
+```
 
-- **Trajectory tracking** — following moving Cartesian end-effector references (e.g. circle, triangle).
-- **Point-to-point reaching** — driving the end-effector from an arbitrary start configuration to a single static Cartesian target while keeping the free-floating base stable.
+## Requirements
 
-In both cases the simulation includes coupled base-arm dynamics, reference generation, action filtering, safety limits, and policy evaluation metrics.
+- MATLAB R2025b with Simulink, Simscape, Simscape Multibody, Robotics System Toolbox, Reinforcement Learning Toolbox
+  and Deep Learning Toolbox. The models are saved in R2025b. Newer releases open them but upgrade the file on save.
+- Parallel Computing Toolbox (optional, used by some training scripts).
+- For hardware runs only: a Kinova Gen3 7-DOF, the Robotics System Toolbox Support Package for KINOVA Gen3
+  Manipulators (`kortexApiMexInterface`), an emergency stop and a clear workspace.
 
-The repository also contains the optional hardware-side tooling used to test and diagnose deployment on a real Kinova Gen3 through the MATLAB/Kinova MEX interface. Hardware execution is intentionally separated from the default simulation workflow.
-
-## Key Contributions
-
-- Extended a previous 4-DOF free-floating space robot setup to an industrial 7-DOF Kinova Gen3 model.
-- Built and compared three Simulink model variants: torque input, motion-profile input, and a PD/velocity-control variant.
-- Evaluated six continuous-control RL algorithms: PPO, TRPO, DDPG, TD3, SAC, and PG.
-- Identified PPO as the strongest method for this setup in terms of tracking, base stability, and training robustness.
-- Added Bayesian hyperparameter optimization for PPO.
-- Implemented a Curriculum Domain Randomization framework for trajectory variation, mass/inertia uncertainty, actuator delay, and friction/damping perturbations.
-- Added a **point-to-point reaching** variant that drives the end-effector to a static target from randomized start configurations, with joint-space target sampling (forward kinematics guarantees reachability), curriculum-based start/target randomization, and an early success-termination reward (distance, end-effector velocity, and base-orientation criteria all satisfied).
-- Built a safety-focused hardware deployment layer with saturation, filtering, rate limiting, soft-limit braking, fault checks, out-of-distribution stopping, watchdogs, and dry-run/preflight gates.
-- Diagnosed a practical sim-to-real bottleneck: the closed-loop MATLAB/MEX/Kortex deployment path reached only about 9.3 Hz, while the policy had been trained for a faster loop. This sample-rate mismatch is a central hardware result of the thesis.
-
-## Repository Contents
-
-| Path | Purpose |
-|---|---|
-| `SpaceKinova.urdf` | Combined robot description for the Kinova Gen3 on a free-floating cube base. |
-| `SpaceKinovaDynamic.m` | Main PPO training script for the SpaceKinova simulation (trajectory tracking). |
-| `SpaceKinova_CDR.m` | PPO training script with Curriculum Domain Randomization. |
-| `SpaceKinova_point.m` | PPO training script for the point-to-point reaching task, with curriculum start/target randomization. |
-| `calculate_kpi_spacekinova.m` | Evaluation script for running trajectory-tracking episodes and computing KPIs. |
-| `calculate_kpi_spacekinova_point.m` | Evaluation script for the point-to-point reaching task (convergence, settling time, success rate, base disturbance). |
-| `SpaceKinova_MotionProfile.slx` | Main motion-profile Simulink training model (trajectory tracking). |
-| `SpaceKinova_MotionProfile_point.slx` | Motion-profile Simulink model for the point-to-point reaching task. |
-| `SpaceKinova_MotionProfile_CDR.slx` | CDR-oriented Simulink model variant. |
-| `SpaceKinova_Torque.slx` | Torque-input model variant used for algorithm comparison. |
-| `SpaceKinova_PD-Control.slx` | PD/velocity-control model variant. |
-| `SavedAgents/` | Selected trained agents used for evaluation and comparison. |
-| `Deploy_Scripts/` | Optional hardware playback, timing diagnosis, and deployment scripts. |
-| `Figures/` | Thesis and README figures for simulation, CDR, point-to-point, and hardware results. |
-
-`ros_kortex/` is not part of this repository and is not required for the normal simulation or evaluation workflow. The included `SpaceKinova.urdf` is the tracked model used by the MATLAB scripts.
-
-## Getting Started
-
-### Requirements
-
-Use MATLAB with the following products installed:
-
-- Simulink
-- Simscape and Simscape Multibody
-- Robotics System Toolbox
-- Reinforcement Learning Toolbox
-- Parallel Computing Toolbox, optional but useful for training
-
-For optional hardware experiments, you additionally need:
-
-- A Kinova Gen3 7-DOF arm
-- Robotics System Toolbox Support Package for KINOVA Gen3 Manipulators
-- The Kinova/MATLAB MEX interface available on the MATLAB path
-- A safe physical setup with emergency stop, clear workspace, and network access to the robot
-
-### Basic Setup
-
-Clone the repository and open MATLAB in the repository root:
+## Getting started
 
 ```matlab
 cd path/to/this/repository
-addpath(genpath(pwd))
+setup_project                         % adds all folders to the path and stays in the repository folder
+calculate_kpi_spacekinova_point       % set-point evaluation in simulation (50 episodes)
+calculate_kpi_spacekinova             % tracking evaluation in simulation (50 episodes)
 ```
 
-Open the main model if you want to inspect the environment:
+Run the scripts by name from the repository folder. The Simulink models load the Kinova meshes through the relative
+path `ros_kortex/...`, so the simulating scripts switch to the repository folder themselves. Agent and model are set
+at the top of each script.
 
-```matlab
-open_system("SpaceKinova_MotionProfile.slx")
-```
+## Simulation models
 
-The tracked `SpaceKinova.urdf` is used directly by the scripts. No external Kinova URDF checkout is needed for the included simulation workflow.
+In the velocity models (all except `Torque` and `PD_Control`) the RL agent outputs one velocity command per joint. A
+post-action chain (saturation, first-order IIR low-pass `0.05/(1 - 0.95 z^-1)`, rate limiter 0.5 rad/s², integrator)
+turns it into a joint position that drives the Simscape joints as prescribed motion. Gravity is off unless noted.
 
-## Running Simulation Training
+| Model | Agent rate / solver step | Used for |
+|---|---|---|
+| `SpaceKinova_MotionProfile.slx` | 10 Hz / 20 ms | tracking, 10 Hz agent |
+| `SpaceKinova_MotionProfile_40Hz.slx` | 40 Hz / 5 ms | tracking, 40 Hz agents |
+| `SpaceKinova_MotionProfile_CDR.slx` | 40 Hz / 5 ms | CDR tests. Stored in a fixed test setting: base 16.25 kg, joint damping ×2, fixed actuator delay |
+| `SpaceKinova_MotionProfile_point.slx` | 10 Hz / 20 ms | set-point evaluation. Base 650 kg, start pose [0 −90 0 0 0 0 0]° |
+| `SpaceKinova_MotionProfile_point_fixed.slx` | 10 Hz / 20 ms | set-point training for the hardware agent. Base signals set to zero, gravity on, observation-noise block |
+| `SpaceKinova_Torque.slx` | 40 Hz / 5 ms | algorithm comparison. Torque actions, reward without base terms |
+| `SpaceKinova_PD_Control.slx` | 40 Hz / 5 ms | thesis only (PD velocity loop) |
 
-Run the baseline PPO training script (trajectory tracking):
+For planar tracking only joints J2, J4 and J6 are active (saturation ±0.9774, ±0.9774 and ±0.1 rad/s). The
+set-point models use all seven joints.
 
-```matlab
-SpaceKinovaDynamic
-```
+## Training
 
-This script prepares the reference trajectory, imports `SpaceKinova.urdf`, solves inverse kinematics for the trajectory seed, configures the RL observation/action spaces, and trains a PPO agent in `SpaceKinova_MotionProfile.slx`.
+| Script | Model | Result |
+|---|---|---|
+| `training/SpaceKinovaDynamic_10Hz.m` | `SpaceKinova_MotionProfile` | 10 Hz PPO agent, half circle from the upright pose, 8.5 s (`Circle/PPO/ppo_10hz.mat`) |
+| `training/SpaceKinovaDynamic.m` | `SpaceKinova_MotionProfile` | 10 Hz PPO variant on a second half circle (center [0.479, −0.005, 1.136] m), 16 s. The other five algorithms are included as commented blocks |
+| `training/SpaceKinova_CDR.m` | `SpaceKinova_MotionProfile_40Hz` | CDR with per-episode randomization. Only trajectory randomization (CDR-1) is active |
+| `training/SpaceKinova_CDR_FRO.m` | `SpaceKinova_MotionProfile_CDR` | CDR in phase sub-batches with model recompilation (mass, actuator delay, friction) |
+| `training/SpaceKinova_Point.m` | `SpaceKinova_MotionProfile_point_fixed` | set-point PPO agent, five-stage start/target curriculum, up to 3000 episodes |
+| `training/SpaceKinova_Point_CDR.m` | `SpaceKinova_MotionProfile_point_fixed` | set-point variant with actuator delay and observation noise |
 
-Run the Curriculum Domain Randomization training script:
+Saving is commented out in most training scripts. After a run, `agent` and `trainingStats` stay in the workspace.
 
-```matlab
-SpaceKinova_CDR
-```
+## Trained agents
 
-`SpaceKinova_CDR.m` includes switches for trajectory randomization, mass/inertia perturbation, actuator delay, friction/damping variation, and start-configuration randomization. Some CDR features require matching Simulink-side parameterization; keep feature flags disabled unless the corresponding model blocks are connected.
+| Agent | Rate | Where it is used |
+|---|---|---|
+| `Torque/Circular/{PPO,TRPO,DDPG,TD3,SAC,PG}.mat` | 40 Hz | algorithm comparison (MATLAB default hyperparameters) |
+| `Torque/Linear/...` | 40 Hz | thesis: triangle path and PPO ablations |
+| `MotionProfile/Circle/PPO/SpaceKinova_PPO_agent_motionprofile.mat` | 40 Hz | PPO baseline, hardware runs 008–011 |
+| `MotionProfile/{Circle,Linear}/PPO/Optimized.mat` | 40 Hz | PPO with Bayesian-optimized hyperparameters |
+| `MotionProfile/CDR/PPO/*.mat` | 40 Hz | one agent per CDR feature and the combinations CDR2-4 and CDR1-4. `CDR2-4.mat` in hardware runs 012–014 |
+| `MotionProfile/Circle/PPO/ppo_10hz.mat` | 10 Hz | frequency-matched agent, hardware runs 012 (10 Hz) and 074–078 |
+| `MotionProfile/NonSingular/*.mat` | 40 / 10 Hz | agents for the second half circle |
+| `MotionProfile/point/test_agent_rand2.mat` | 10 Hz | set-point evaluation in simulation |
+| `MotionProfile/point/test_agent_fixed1.mat` | 10 Hz | set-point hardware runs 068–073 |
 
-Run the point-to-point reaching training script:
+All agents use two hidden layers with 128 ReLU units for actor and critic.
 
-```matlab
-SpaceKinova_point
-```
+## Hardware
 
-`SpaceKinova_point.m` trains a PPO agent in `SpaceKinova_MotionProfile_point.slx` to drive the end-effector to a static target. It imports the URDF, solves IK for the nominal target to obtain an anchor configuration, and applies a minimal curriculum that randomizes the start configuration (around a fixed anchor) and the target point. Target randomization is done in joint space and mapped to a Cartesian point via forward kinematics, so every sampled target is reachable by construction. The reward combines a distance gradient, a near-target braking term, base-stability penalties, and a terminal success bonus that ends the episode early once the end-effector is inside the tolerance at low velocity with a stable base.
+The deployment scripts connect to the Gen3 through `kortexApiMexInterface` (default IP 192.168.0.10). They
+replicate the post-action chain of the models and add a safety layer: hardware velocity cap, soft-limit braking, fault
+check, stop at a position error above 0.4 m (tracking) or 2.0 m (set-point), and a timing watchdog. Always start with `cfg.dryRun = true`.
 
-The scripts currently keep the agent-save blocks commented out. The trained `agent` and `trainingStats` remain available in the MATLAB workspace after a run. Re-enable the save block in the script if you want to persist new training results.
+| Script | Purpose |
+|---|---|
+| `hardware/deploy/deploy_agent_kinova_improved.m` | V2.1, tracking, extended logging (runs 008–014) |
+| `hardware/deploy/deploy_agent_kinova_robust_timing.m` | V2.2, tracking with guarded reference time and timing diagnosis (run 012, 10 Hz) |
+| `hardware/deploy/deploy_agent_kinova_robust_timing2.m` | V2.3, tracking with corrected observation, 10 Hz, 17 s reference (runs 074–078) |
+| `hardware/deploy/deploy_agent_kinova_point.m` | set-point deployment at 10 Hz, end-effector state from Kortex `tool_pose`/`tool_twist` (runs 068–073) |
+| `hardware/playback/playback_variants.m` | open-loop playback of `data/dq_cmd/*.mat` at three time scales (runs 001–006) |
+| `hardware/playback/kinova_test.m` | joint-velocity jog test |
+| `hardware/analysis/compare_sim2real.m` | tracking KPIs of real and simulated runs on a common phase axis |
+| `hardware/analysis/evaluate_p2p_hardware.m` | set-point KPIs of the hardware runs |
+| `hardware/analysis/analyze_tracking_error*.m` | joint and Cartesian error of the playback runs |
 
-## Evaluating Trained Agents
+The run files in `data/hardware/` contain `data` (time series) and `meta` (agent file, rate, speed scale, script,
+date). The number in the label (`seed11`, ...) counts runs, it is not an RL seed.
 
-Selected trained agents are already committed under `SavedAgents/`. To run the trajectory-tracking KPI evaluation with the default configured agent:
+| Folder / runs | Content |
+|---|---|
+| `playback_runs/run_001`–`006` | open-loop playback, first half circle (001–003) and second half circle (004–006) |
+| `deploy_logs/run_008`–`014` | 40 Hz agents, speed scale 0.3 to 1.0 |
+| `deploy_logs/run_012_agent_train_seed10_okay.mat` | 10 Hz agent, 8.5 s reference, speed scale 0.6 |
+| `runs/run_068`–`073` | set-point agent, six start/target pairs |
+| `runs/run_074`–`078` | 10 Hz agent, 17 s reference |
+| `runs/run_079`–`088` | simulated episodes of the 10 Hz agent in the same format |
+| `runs/*.csv`, `analysis_output/summary.csv` | KPI summaries |
 
-```matlab
-calculate_kpi_spacekinova
-```
+## Known limitations
 
-The evaluation script loads a trained agent, runs repeated Simulink episodes, and computes performance indicators for:
+- The deployment scripts V2.1 and V2.2 build the observation differently from the models: order
+  `[ep; ev; q; dq; v_base; w_base; e_ori]` instead of `[ep; ev; v_base; w_base; q; dq; e_ori]`, error sign
+  reference − state instead of state − reference, and the end-effector orientation in the base-orientation slot. V2.3
+  (`robust_timing2`) and the set-point script use the training convention. Runs 008–014 were recorded with the old
+  observation.
+- `deploy_agent_kinova_robust_timing2.m` scales the commands by a fixed factor of 0.35 on top of `speedScale`. The run
+  files store only `speedScale`.
+- The joints are driven as prescribed motion. Joint damping and friction therefore change only the computed torques,
+  not the motion or the base reaction.
+- `SpaceKinova_MotionProfile_CDR.slx` does not read the randomization variables that `SpaceKinova_CDR_FRO.m` writes.
+  To retrain with CDR, link base mass, joint damping and delay length to `base_mass_factor`, `joint_damping` and
+  `act_delay_steps` first.
+- The agents are saved with `UseExplorationPolicy = true`, so the evaluation scripts run the stochastic policy. The
+  deployment scripts switch to the deterministic policy.
+- The hardware runs scale the commands after the post-action chain (`speedScale` in `meta`), and the hardware cap is
+  75 % of the joint limits.
+- The IK weights `[1 1 1 0.05 0.05 0.05]` in the tracking scripts weight orientation strongly and position weakly
+  (MATLAB order is orientation first).
 
-- end-effector tracking
-- base disturbance
-- energy/power use
-- command smoothness
-- return and early-termination behavior
+## License
 
-By default, the script points to a committed agent file:
+The code in this repository is released under the MIT License, see `LICENSE`.
 
-```matlab
-SavedAgents/MotionProfile/Circle/PPO/ppo_10hz.mat
-```
+`ros_kortex/` contains the Gen3 7-DOF meshes from [Kinovarobotics/ros_kortex](https://github.com/Kinovarobotics/ros_kortex)
+under the BSD 3-Clause license in `ros_kortex/LICENSE`. The same applies to `robot/GEN3-7DOF-VISION_ARM_URDF_V12.urdf`
+and to the Kinova link and joint data in `robot/SpaceKinova.urdf`, which was generated with
+`robot/make_spacekinova_urdf.m`.
 
-You can change `agentFile` inside `calculate_kpi_spacekinova.m` to evaluate another committed or newly trained `.mat` agent.
+## Citation
 
-To evaluate the point-to-point reaching task:
-
-```matlab
-calculate_kpi_spacekinova_point
-```
-
-This script runs repeated reaching episodes in `SpaceKinova_MotionProfile_point.slx` and reports convergence-oriented KPIs: final and minimum distance to target, settling time, success rate against a configurable tolerance, path length and efficiency, overshoot, base disturbance, and effort/smoothness. As with the trajectory script, you can change the configured agent file inside the script.
-
-## Running Simulation Training and Evaluation Notes
-
-Both task families share the same robot model, observation conventions, and safety limits, which makes it possible to reuse most of the analysis tooling across trajectory tracking and point-to-point reaching. The key difference is the reference: a moving timeseries for tracking versus a constant target (with zero reference velocity) for reaching.
-
-## Results
-
-### PPO and Algorithm Comparison
-
-The thesis compared PPO, TRPO, DDPG, TD3, SAC, and PG on the 7-DOF SpaceKinova setup. PPO gave the best overall balance of tracking accuracy, base stability, and training robustness. In the reported 50-episode evaluation, PPO reached:
-
-- mean squared end-effector tracking error: `0.0015 m^2`
-- maximum end-effector error: `0.1866 m`
-- mean base-orientation error: `0.0169 rad`
-- mean return: `638.8`
-- early-termination rate: `0`
-
-Bayesian hyperparameter optimization further improved PPO performance on the triangle trajectory, increasing the mean return from `224.6` with default PPO settings to `1244` for the optimized configuration.
-
-![Optimized PPO trajectory](Figures/Simulation/optimized_ppo_circular_trajectoy_average.png)
-
-### Point-to-Point Reaching
-
-The point-to-point variant was evaluated as an out-of-distribution test: the arm was started at `[0 -90 0 0 0 0 0]` deg — a configuration outside the training start distribution — and commanded to `target_pos = [0.479, -0.005, 1.136]`. Over 5 episodes with a 50 mm success tolerance, the trained policy reached the target reliably and came to rest with a stable base:
-
-- success rate: `100 %`
-- mean final end-effector error: `35.2 mm`
-- mean minimum distance to target: `27.2 mm`
-- mean settling time: `27.64 s`
-- max overshoot: `0.0 mm`
-- mean path length: `2.790 m`
-- mean path efficiency: `0.51` (1.0 = straight-line optimal)
-- mean base-orientation error: `0.051 rad`
-- mean base angular velocity: `0.002 rad/s`
-- mean power: `0.16 W`
-
-The convergence curve below shows the distance to the target over time, averaged across the five episodes, settling below the 50 mm tolerance band without overshoot. The result indicates that the policy generalizes to an unseen start configuration while keeping base disturbance low; the moderate path efficiency (`0.51`) shows the approach path is not yet direct and leaves room for shaping improvements.
-
-![Point-to-point convergence](Figures/Simulation/point_convergence.png)
-
-### Curriculum Domain Randomization
-
-The CDR framework gradually increases simulation diversity over four curriculum phases. It was designed to improve robustness against trajectory changes, mass/inertia uncertainty, actuator delay, and friction/damping variation.
-
-![CDR overview](Figures/Schemata/CDR-%C3%9Cbersicht.png)
-
-The main finding is that CDR is most valuable when the test disturbance differs meaningfully from the nominal training case. For example, trajectory randomization improved generalization to an unseen mirrored half-circle, while mass randomization produced consistent robustness gains under strong base-mass perturbation.
-
-### Hardware Diagnosis
-
-The hardware tests validated that the Kinova Gen3 can follow sent joint-velocity commands with high joint-space accuracy in open-loop experiments. The limiting issue appeared in closed-loop deployment: the full MATLAB/MEX loop with command sending, feedback reading, policy inference, filtering, and logging ran at about `9.3 Hz`, far below the intended training loop rate.
-
-![40 Hz vs 10 Hz hardware result](Figures/Deployment/40hz-vs-10hz_real.jpg)
-
-This means the observed closed-loop hardware behavior cannot be used as a clean verdict on the policy's real-world generalization. The implementation-level sample-rate mismatch itself is an important practical result: future deployment should either train for the achievable loop rate or move to a lower-latency control interface.
-
-## Limitations
-
-- The repository is centered on MATLAB/Simulink and requires the listed toolboxes.
-- Some scripts contain experiment-specific constants, selected agent paths, and commented save blocks that may need adjustment for new experiments.
-- Full hardware deployment is not plug-and-play from a fresh clone; it depends on a Kinova Gen3 setup and the external Kinova MEX interface.
-- The closed-loop real-hardware policy evaluation remains limited by the measured MATLAB/MEX/Kortex timing bottleneck.
-- The point-to-point evaluation reported here covers a single nominal target with a small episode count; broader target coverage and larger sample sizes would strengthen the reaching results.
-- Generated logs, local hardware runs, and external Kinova support files are intentionally not part of the tracked repository.
-
-## Citation / Thesis Context
-
-This repository accompanies the bachelor thesis:
-
-> Steven Patrick Ermisch, "Sim-to-Real-Uebertragung einer Reinforcement Learning getriebenen kartesischen Bewegungsplanung eines 7 DoF frei-schwebenden Weltraumroboters", Bachelor thesis, Frankfurt University of Applied Sciences, submitted May 1, 2026.
-
-BibTeX:
+Steven Patrick Ermisch, "Sim-to-Real-Uebertragung einer Reinforcement Learning getriebenen kartesischen
+Bewegungsplanung eines 7 DoF frei-schwebenden Weltraumroboters", Bachelor thesis, Frankfurt University of Applied
+Sciences, 2026.
 
 ```bibtex
 @thesis{ermisch2026spacekinova,
   author = {Ermisch, Steven Patrick},
-  title = {Sim-to-Real-Uebertragung einer Reinforcement Learning getriebenen kartesischen Bewegungsplanung eines 7 DoF frei-schwebenden Weltraumroboters},
+  title  = {Sim-to-Real-Uebertragung einer Reinforcement Learning getriebenen kartesischen Bewegungsplanung
+            eines 7 DoF frei-schwebenden Weltraumroboters},
   school = {Frankfurt University of Applied Sciences},
-  type = {Bachelor thesis},
-  year = {2026}
+  type   = {Bachelor thesis},
+  year   = {2026}
 }
 ```
