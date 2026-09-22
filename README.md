@@ -20,6 +20,7 @@ models/              Simulink/Simscape Multibody models
 training/            training scripts
 evaluation/          simulation KPI scripts
   campaign/          analysis of the 2026 hardware campaign (tables and figures from the logs)
+  paper/             recomputes the hardware numbers of the current paper from the existing logs
 hardware/
   deploy/            closed-loop deployment of a trained agent on the real Gen3
   campaign/          2026 measurement campaign: tracking and set-point deploy V2.4, loop timing,
@@ -31,6 +32,7 @@ SavedAgents/         trained agents (.mat, variable "agent")
 data/
   dq_cmd/            logged simulation commands used as playback input
   hardware/          hardware and simulation run logs, KPI summaries
+  simulation/        written sources of simulation results without raw data (Table II)
 Figures/             figures from the thesis
 ros_kortex/          Gen3 meshes from Kinova's ros_kortex (only the files the models need)
 ```
@@ -122,6 +124,8 @@ check, stop at a position error above 0.4 m (tracking) or 2.0 m (set-point), and
 | `hardware/campaign/make_setpoint_starts.m` | generates the fixed start list `setpoint_starts.mat`/`.csv` (15 starts over seven start distances to the nominal training target) and overview plots, offline |
 | `hardware/campaign/check_setpoint_starts.m` | lab check: moves to each start pose, asks for approval, logs measured vs. predicted `tool_pose` to `data/hardware/campaign/setpoint_start_check.csv` |
 | `evaluation/campaign/analyze_campaign.py` | builds Table III, Table IV, Fig. 7 and the set-point table and figure (final error over start distance) directly from the campaign logs, plus `paper_numbers.csv` |
+| `evaluation/paper/legacy_numbers.py` | recomputes Table V, Table VIII and the hardware numbers of Sec. VI-B and VI-C of the current paper from the pre-campaign logs, writes `evaluation/paper/legacy_numbers.csv` |
+| `evaluation/paper/legacy_fk_numbers.m` | FK-based numbers of the current paper: open-loop playback (Sec. V-B) and the offset of the Kortex tool pose (0.121 m), writes `evaluation/paper/legacy_fk_numbers.csv` |
 | `hardware/playback/playback_variants.m` | open-loop playback of `data/dq_cmd/*.mat` at three time scales (runs 001–006) |
 | `hardware/playback/kinova_test.m` | joint-velocity jog test |
 | `hardware/analysis/compare_sim2real.m` | tracking KPIs of real and simulated runs on a common phase axis |

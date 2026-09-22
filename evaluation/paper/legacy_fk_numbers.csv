@@ -1,0 +1,62 @@
+key,value,unit,files,note
+run_001.timeScale,1,,playback_runs/run_001_kin_baseline_training_singular.mat,
+run_001.duration,17.1267,s,playback_runs/run_001_kin_baseline_training_singular.mat,erster bis letzter Schritt
+run_001.t_end,17.2429,s,playback_runs/run_001_kin_baseline_training_singular.mat,Zeitstempel des letzten Schritts
+run_001.loop_median,50.0212,ms,playback_runs/run_001_kin_baseline_training_singular.mat,
+run_001.ee_vs_integrated_rms,347.799,mm,playback_runs/run_001_kin_baseline_training_singular.mat,Servo-Folge
+run_001.ee_vs_plan_rms,307.997,mm,playback_runs/run_001_kin_baseline_training_singular.mat,geplanter Takt
+run_001.joints_at_limit,J2 J4,,playback_runs/run_001_kin_baseline_training_singular.mat,gemessene Position bis auf 1 deg an der Datenblattgrenze
+run_001.max_abs_J2_J4_J6,129.0 147.9 78.8,deg,playback_runs/run_001_kin_baseline_training_singular.mat,
+run_001.t_first_joint_dev,8.80142,s,playback_runs/run_001_kin_baseline_training_singular.mat,
+run_001.ee_vs_plan_at_first_joint_dev,442.741,mm,playback_runs/run_001_kin_baseline_training_singular.mat,
+run_002.timeScale,2,,playback_runs/run_002_kin_slow_training_singular.mat,
+run_002.duration,17.8703,s,playback_runs/run_002_kin_slow_training_singular.mat,erster bis letzter Schritt
+run_002.t_end,17.9289,s,playback_runs/run_002_kin_slow_training_singular.mat,Zeitstempel des letzten Schritts
+run_002.loop_median,50.0423,ms,playback_runs/run_002_kin_slow_training_singular.mat,
+run_002.ee_vs_integrated_rms,1.32076,mm,playback_runs/run_002_kin_slow_training_singular.mat,Servo-Folge
+run_002.ee_vs_plan_rms,16.3719,mm,playback_runs/run_002_kin_slow_training_singular.mat,geplanter Takt
+run_002.joints_at_limit,,,playback_runs/run_002_kin_slow_training_singular.mat,gemessene Position bis auf 1 deg an der Datenblattgrenze
+run_002.max_abs_J2_J4_J6,68.8 132.6 41.1,deg,playback_runs/run_002_kin_slow_training_singular.mat,
+run_003.timeScale,0.75,,playback_runs/run_003_kin_fast_training_singular.mat,
+run_003.duration,17.0769,s,playback_runs/run_003_kin_fast_training_singular.mat,erster bis letzter Schritt
+run_003.t_end,17.1124,s,playback_runs/run_003_kin_fast_training_singular.mat,Zeitstempel des letzten Schritts
+run_003.loop_median,50.0194,ms,playback_runs/run_003_kin_fast_training_singular.mat,
+run_003.ee_vs_integrated_rms,483.522,mm,playback_runs/run_003_kin_fast_training_singular.mat,Servo-Folge
+run_003.ee_vs_plan_rms,425.955,mm,playback_runs/run_003_kin_fast_training_singular.mat,geplanter Takt
+run_003.joints_at_limit,J2 J4,,playback_runs/run_003_kin_fast_training_singular.mat,gemessene Position bis auf 1 deg an der Datenblattgrenze
+run_003.max_abs_J2_J4_J6,129.0 148.0 104.8,deg,playback_runs/run_003_kin_fast_training_singular.mat,
+run_003.t_first_joint_dev,3.11676,s,playback_runs/run_003_kin_fast_training_singular.mat,
+run_003.ee_vs_plan_at_first_joint_dev,212.574,mm,playback_runs/run_003_kin_fast_training_singular.mat,
+run_004.timeScale,1,,playback_runs/run_004_kin_baseline_training_non-singular.mat,
+run_004.duration,17.0604,s,playback_runs/run_004_kin_baseline_training_non-singular.mat,erster bis letzter Schritt
+run_004.t_end,17.1067,s,playback_runs/run_004_kin_baseline_training_non-singular.mat,Zeitstempel des letzten Schritts
+run_004.loop_median,49.9037,ms,playback_runs/run_004_kin_baseline_training_non-singular.mat,
+run_004.ee_vs_integrated_rms,2.19615,mm,playback_runs/run_004_kin_baseline_training_non-singular.mat,Servo-Folge
+run_004.ee_vs_plan_rms,159.576,mm,playback_runs/run_004_kin_baseline_training_non-singular.mat,geplanter Takt
+run_004.joints_at_limit,,,playback_runs/run_004_kin_baseline_training_non-singular.mat,gemessene Position bis auf 1 deg an der Datenblattgrenze
+run_004.max_abs_J2_J4_J6,71.2 130.0 117.7,deg,playback_runs/run_004_kin_baseline_training_non-singular.mat,
+run_004.t_first_joint_dev,1.76557,s,playback_runs/run_004_kin_baseline_training_non-singular.mat,
+run_004.ee_vs_plan_at_first_joint_dev,56.0723,mm,playback_runs/run_004_kin_baseline_training_non-singular.mat,
+run_005.timeScale,2,,playback_runs/run_005_kin_slow_training_non-singular.mat,
+run_005.duration,18.715,s,playback_runs/run_005_kin_slow_training_non-singular.mat,erster bis letzter Schritt
+run_005.t_end,18.7594,s,playback_runs/run_005_kin_slow_training_non-singular.mat,Zeitstempel des letzten Schritts
+run_005.loop_median,54.3035,ms,playback_runs/run_005_kin_slow_training_non-singular.mat,
+run_005.ee_vs_integrated_rms,1.37357,mm,playback_runs/run_005_kin_slow_training_non-singular.mat,Servo-Folge
+run_005.ee_vs_plan_rms,20.9394,mm,playback_runs/run_005_kin_slow_training_non-singular.mat,geplanter Takt
+run_005.joints_at_limit,,,playback_runs/run_005_kin_slow_training_non-singular.mat,gemessene Position bis auf 1 deg an der Datenblattgrenze
+run_005.max_abs_J2_J4_J6,45.9 130.0 89.4,deg,playback_runs/run_005_kin_slow_training_non-singular.mat,
+run_006.timeScale,0.75,,playback_runs/run_006_kin_fast_training_non-singular.mat,
+run_006.duration,17.106,s,playback_runs/run_006_kin_fast_training_non-singular.mat,erster bis letzter Schritt
+run_006.t_end,17.1509,s,playback_runs/run_006_kin_fast_training_non-singular.mat,Zeitstempel des letzten Schritts
+run_006.loop_median,50.0161,ms,playback_runs/run_006_kin_fast_training_non-singular.mat,
+run_006.ee_vs_integrated_rms,13.2303,mm,playback_runs/run_006_kin_fast_training_non-singular.mat,Servo-Folge
+run_006.ee_vs_plan_rms,238.928,mm,playback_runs/run_006_kin_fast_training_non-singular.mat,geplanter Takt
+run_006.joints_at_limit,J6,,playback_runs/run_006_kin_fast_training_non-singular.mat,gemessene Position bis auf 1 deg an der Datenblattgrenze
+run_006.max_abs_J2_J4_J6,89.9 130.0 120.3,deg,playback_runs/run_006_kin_fast_training_non-singular.mat,
+run_006.t_first_joint_dev,1.46889,s,playback_runs/run_006_kin_fast_training_non-singular.mat,
+run_006.ee_vs_plan_at_first_joint_dev,68.2636,mm,playback_runs/run_006_kin_fast_training_non-singular.mat,
+tool_offset_z,0.121046,m,runs/run_068_agent_p2p_seed1.mat;runs/run_069_agent_p2p_seed1.mat;runs/run_070_agent_p2p_seed1.mat;runs/run_071_agent_p2p_seed1.mat;runs/run_072_agent_p2p_seed1.mat;runs/run_073_agent_p2p_seed1.mat,Kortex-Werkzeugpunkt im EE-Frame, z-Anteil
+tool_offset_xy,0.00442693,m,runs/run_068_agent_p2p_seed1.mat;runs/run_069_agent_p2p_seed1.mat;runs/run_070_agent_p2p_seed1.mat;runs/run_071_agent_p2p_seed1.mat;runs/run_072_agent_p2p_seed1.mat;runs/run_073_agent_p2p_seed1.mat,
+base_offset_z,-0.498537,m,runs/run_068_agent_p2p_seed1.mat;runs/run_069_agent_p2p_seed1.mat;runs/run_070_agent_p2p_seed1.mat;runs/run_071_agent_p2p_seed1.mat;runs/run_072_agent_p2p_seed1.mat;runs/run_073_agent_p2p_seed1.mat,Kortex-Frame minus URDF-Frame
+tool_fit_rms,3.0284,mm,runs/run_068_agent_p2p_seed1.mat;runs/run_069_agent_p2p_seed1.mat;runs/run_070_agent_p2p_seed1.mat;runs/run_071_agent_p2p_seed1.mat;runs/run_072_agent_p2p_seed1.mat;runs/run_073_agent_p2p_seed1.mat,271 Punkte
+tool_fit_max,9.7741,mm,runs/run_068_agent_p2p_seed1.mat;runs/run_069_agent_p2p_seed1.mat;runs/run_070_agent_p2p_seed1.mat;runs/run_071_agent_p2p_seed1.mat;runs/run_072_agent_p2p_seed1.mat;runs/run_073_agent_p2p_seed1.mat,
