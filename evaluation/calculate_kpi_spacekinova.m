@@ -155,7 +155,11 @@ assignin('base', 'eeBodyName', eeBodyName);
 
 % Inverse Kinematik
 ik = inverseKinematics('RigidBodyTree', robot_rbt);
-ikWeights = [1 1 1 0.05 0.05 0.05];   % Position wichtig, Orientierung schwach
+% IK-Gewichte in MATLAB-Reihenfolge [Orientierung(3) Position(3)]: Diese Werte gewichten die
+% Orientierung stark und die Position schwach. Positionsbetont waere [0.05 0.05 0.05 1 1 1]
+% (so in den Point-Skripten). Die gespeicherten Agenten wurden mit diesen Werten trainiert,
+% deshalb bleiben sie unveraendert (Befund A32).
+ikWeights = [1 1 1 0.05 0.05 0.05];
 
 qSeed = homeConfiguration(robot_rbt);
 q_des = zeros(numel(t), nJ);

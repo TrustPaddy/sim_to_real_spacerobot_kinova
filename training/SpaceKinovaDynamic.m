@@ -149,7 +149,10 @@ assignin('base','eeBodyName', cfg.eeBodyName);
 % IK vorbereiten (nur als Startseed/Reset-Hilfe; Training nutzt weiterhin Dynamik aus Simulink)
 ik = inverseKinematics("RigidBodyTree", robot_rbt);
 
-% Position ist wichtig, Orientierung nur schwach (damit IK robust bleibt)
+% IK-Gewichte in MATLAB-Reihenfolge [Orientierung(3) Position(3)]: Diese Werte gewichten die
+% Orientierung stark und die Position schwach. Positionsbetont waere [0.05 0.05 0.05 1 1 1]
+% (so in den Point-Skripten). Die gespeicherten Agenten wurden mit diesen Werten trainiert,
+% deshalb bleiben sie unveraendert (Befund A32).
 ikWeights = [1 1 1 0.05 0.05 0.05];
 
 qSeed = homeConfiguration(robot_rbt);

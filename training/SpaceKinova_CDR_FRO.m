@@ -286,6 +286,10 @@ if cfg.cdr.enable.trajectory
     fprintf('[CDR] Berechne Trajektorienbibliothek (%d Eintraege)...\n', cfg.cdr.traj.N_lib);
 
     ik        = inverseKinematics("RigidBodyTree", robot_rbt);
+    % IK-Gewichte in MATLAB-Reihenfolge [Orientierung(3) Position(3)]: Diese Werte gewichten die
+    % Orientierung stark und die Position schwach. Positionsbetont waere [0.05 0.05 0.05 1 1 1]
+    % (so in den Point-Skripten). Die gespeicherten Agenten wurden mit diesen Werten trainiert,
+    % deshalb bleiben sie unveraendert (Befund A32).
     ikWeights = [1 1 1 0.05 0.05 0.05];
 
     traj_lib = struct('traj',  cell(cfg.cdr.traj.N_lib, 1), ...
@@ -373,6 +377,10 @@ if cfg.cdr.enable.trajectory
 else
     cfg.t_vec = t_vec;
     ik        = inverseKinematics("RigidBodyTree", robot_rbt);
+    % IK-Gewichte in MATLAB-Reihenfolge [Orientierung(3) Position(3)]: Diese Werte gewichten die
+    % Orientierung stark und die Position schwach. Positionsbetont waere [0.05 0.05 0.05 1 1 1]
+    % (so in den Point-Skripten). Die gespeicherten Agenten wurden mit diesen Werten trainiert,
+    % deshalb bleiben sie unveraendert (Befund A32).
     ikWeights = [1 1 1 0.05 0.05 0.05];
 
     traj_pts = generateTrajectory('halfcircle', t_vec, ...
