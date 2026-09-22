@@ -19,8 +19,10 @@ robot/               SpaceKinova URDF, plain Gen3 URDF, URDF generator
 models/              Simulink/Simscape Multibody models
 training/            training scripts
 evaluation/          simulation KPI scripts
+  campaign/          analysis of the 2026 hardware campaign (tables and loop-time figure from the logs)
 hardware/
   deploy/            closed-loop deployment of a trained agent on the real Gen3
+  campaign/          2026 measurement campaign: deploy V2.4, loop-timing measurement, plan (MESSPLAN.md)
   playback/          open-loop playback of logged joint-velocity commands, jog tests
   analysis/          offline analysis of hardware and simulation runs
 utils/               sk_path (repository paths), run_logger (numbered run files)
@@ -113,6 +115,9 @@ check, stop at a position error above 0.4 m (tracking) or 2.0 m (set-point), and
 | `hardware/deploy/deploy_agent_kinova_robust_timing.m` | V2.2, tracking with guarded reference time and timing diagnosis (run 012, 10 Hz) |
 | `hardware/deploy/deploy_agent_kinova_robust_timing2.m` | V2.3, tracking with corrected observation, 10 Hz, 17 s reference (runs 074–078) |
 | `hardware/deploy/deploy_agent_kinova_point.m` | set-point deployment at 10 Hz, end-effector state from Kortex `tool_pose`/`tool_twist` (runs 068–073) |
+| `hardware/campaign/deploy_tracking_v24.m` | V2.4 for the 2026 campaign: conditions from `campaign_plan.m`, one explicit command factor, the stop step is logged, per-step timing of every stage, observation and full command chain, Kortex pose, metadata with git hash and agent MD5. Logs in `data/hardware/campaign/` |
+| `hardware/campaign/measure_loop_timing.m` | loop-time measurement with the robot at rest (zero commands) for send only, send + feedback, + FK, and the full loop |
+| `evaluation/campaign/analyze_campaign.py` | builds Table III, Table IV and Fig. 7 of the paper directly from the campaign logs, plus `paper_numbers.csv` |
 | `hardware/playback/playback_variants.m` | open-loop playback of `data/dq_cmd/*.mat` at three time scales (runs 001–006) |
 | `hardware/playback/kinova_test.m` | joint-velocity jog test |
 | `hardware/analysis/compare_sim2real.m` | tracking KPIs of real and simulated runs on a common phase axis |

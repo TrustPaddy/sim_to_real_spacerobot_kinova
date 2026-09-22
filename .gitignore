@@ -58,3 +58,7 @@ ros_kortex/kortex_description/arms/gen3/*
 !ros_kortex/kortex_description/arms/gen3/7dof/
 ros_kortex/kortex_description/arms/gen3/7dof/*
 !ros_kortex/kortex_description/arms/gen3/7dof/meshes/
+
+# Trockenlaeufe der Messkampagne (hardware/campaign, dryRun = true)
+data/hardware/campaign/_dryrun/
+data/hardware/campaign/campaign_index_dryrun.csv
