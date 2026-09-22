@@ -444,7 +444,9 @@ cfg.allowStartOffset = false;
 cfg.r          = 0.2;
 cfg.startPoint = [0.0, -0.025, 1.687];   % FK der Nullstellung, Start des Halbkreises
 cfg.yConst     = 0;
-cfg.realBaseOffset = [0 0 0.001];
+cfg.realBaseOffset = [0 0 -0.5];     % Kortex-Frame minus URDF-Frame (base_to_kinova), nur fuer den Plot.
+                                     % tool_pose liegt zusaetzlich 0.121 m entlang der Werkzeugachse
+                                     % vor dem FK-Punkt (Greifer, siehe private/kortex_frames.m).
 
 cfg.ePLim = 0.5; cfg.eVLim = 1.0; cfg.vBLim = 0.5; cfg.wBLim = 1.0; cfg.eOriLim = pi;
 cfg.oodThreshold = 0.4;
@@ -718,7 +720,7 @@ plot(L.ee_pos(:,1), L.ee_pos(:,3), 'b-');
 if any(isfinite(L.ee_kortex_real(:)))
     ek = L.ee_kortex_real - cfg.realBaseOffset;
     plot(ek(:,1), ek(:,3), 'm-');
-    legend('Plan', 'Referenz verwendet', 'FK', 'Kortex', 'Location', 'best');
+    legend('Plan', 'Referenz verwendet', 'FK', 'Kortex tool\_pose (Greiferpunkt)', 'Location', 'best');
 else
     legend('Plan', 'Referenz verwendet', 'FK', 'Location', 'best');
 end

@@ -19,10 +19,11 @@ robot/               SpaceKinova URDF, plain Gen3 URDF, URDF generator
 models/              Simulink/Simscape Multibody models
 training/            training scripts
 evaluation/          simulation KPI scripts
-  campaign/          analysis of the 2026 hardware campaign (tables and loop-time figure from the logs)
+  campaign/          analysis of the 2026 hardware campaign (tables and figures from the logs)
 hardware/
   deploy/            closed-loop deployment of a trained agent on the real Gen3
-  campaign/          2026 measurement campaign: deploy V2.4, loop-timing measurement, plan (MESSPLAN.md)
+  campaign/          2026 measurement campaign: tracking and set-point deploy V2.4, loop timing,
+                     fixed set-point start list, plan (MESSPLAN.md)
   playback/          open-loop playback of logged joint-velocity commands, jog tests
   analysis/          offline analysis of hardware and simulation runs
 utils/               sk_path (repository paths), run_logger (numbered run files)
@@ -117,7 +118,10 @@ check, stop at a position error above 0.4 m (tracking) or 2.0 m (set-point), and
 | `hardware/deploy/deploy_agent_kinova_point.m` | set-point deployment at 10 Hz, end-effector state from Kortex `tool_pose`/`tool_twist` (runs 068–073) |
 | `hardware/campaign/deploy_tracking_v24.m` | V2.4 for the 2026 campaign: conditions from `campaign_plan.m`, one explicit command factor, the stop step is logged, per-step timing of every stage, observation and full command chain, Kortex pose, metadata with git hash and agent MD5. Logs in `data/hardware/campaign/` |
 | `hardware/campaign/measure_loop_timing.m` | loop-time measurement with the robot at rest (zero commands) for send only, send + feedback, + FK, and the full loop |
-| `evaluation/campaign/analyze_campaign.py` | builds Table III, Table IV and Fig. 7 of the paper directly from the campaign logs, plus `paper_numbers.csv` |
+| `hardware/campaign/deploy_setpoint_v24.m` | set-point V2.4 for the campaign: fixed start poses, end-effector from the URDF FK as in training (V3.0 used the Kortex `tool_pose`, 0.121 m further along the tool axis), one command factor, logged stop step, height guard, kinematic dry run |
+| `hardware/campaign/make_setpoint_starts.m` | generates the fixed start list `setpoint_starts.mat`/`.csv` (15 starts over seven start distances to the nominal training target) and overview plots, offline |
+| `hardware/campaign/check_setpoint_starts.m` | lab check: moves to each start pose, asks for approval, logs measured vs. predicted `tool_pose` to `data/hardware/campaign/setpoint_start_check.csv` |
+| `evaluation/campaign/analyze_campaign.py` | builds Table III, Table IV, Fig. 7 and the set-point table and figure (final error over start distance) directly from the campaign logs, plus `paper_numbers.csv` |
 | `hardware/playback/playback_variants.m` | open-loop playback of `data/dq_cmd/*.mat` at three time scales (runs 001–006) |
 | `hardware/playback/kinova_test.m` | joint-velocity jog test |
 | `hardware/analysis/compare_sim2real.m` | tracking KPIs of real and simulated runs on a common phase axis |
