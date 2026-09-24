@@ -16,6 +16,7 @@ function mdlFile = desktop_build_model(force)
 %     p_slew         Anstieg des Rate Limiters [1/s] (Training 0,5)
 %     p_cmd_scale    Faktor auf den Befehl nach der Kette (speedScale der Deploy-Skripte, A18)
 %     p_obs_mode     0 = Beobachtung wie im Training, 1 = wie Deploy-Skript V2.1 (A22)
+%     p_obs_noise    29x1 Standardabweichungen fuer Beobachtungsrauschen vor dem Agenten (D7), Standard 0
 %   Zusaetzlich geloggt: Rohaktion, gesaettigte, gefilterte, ratenbegrenzte und skalierte Aktion,
 %   Gelenkwinkel-Befehl hinter der Positionssaettigung, Beobachtung (obs) und Agenten-Eingang (obs_agent),
 %   isDone.
@@ -95,8 +96,11 @@ chart = sfroot().find('-isa', 'Stateflow.EMChart', 'Path', obsBlk);
 chart.Script = obsTransformCode();
 add_block('simulink/Sources/Constant', [dst '/Obs Mode'], 'Value', 'p_obs_mode', ...
     'Position', blockPos([dst '/Rate Transition1'], [0 60]));
+add_block('simulink/Sources/Constant', [dst '/Obs Noise'], 'Value', 'p_obs_noise', ...
+    'Position', blockPos([dst '/Rate Transition1'], [0 120]));
 add_line(dst, 'Rate Transition1/1', 'Obs Transform/1', 'autorouting', 'on');
 add_line(dst, 'Obs Mode/1', 'Obs Transform/2', 'autorouting', 'on');
+add_line(dst, 'Obs Noise/1', 'Obs Transform/3', 'autorouting', 'on');
 add_line(dst, 'Obs Transform/1', 'RL_Agent/1', 'autorouting', 'on');
 logPort(obsBlk, 1, 'obs_agent');
 logPort([dst '/Cmd Scale'], 1, 'a_scaled');
@@ -115,18 +119,25 @@ end
 
 function code = obsTransformCode()
 code = strjoin({
-'function y = obs_transform(u, mode)'
+'function y = obs_transform(u, mode, sigma)'
 '% mode 0: Beobachtung wie im Training [ep; ev; v_base; w_base; q; dq; e_ori]'
 '% mode 1: wie Deploy-Skript V2.1 (Befund A22): Reihenfolge [ep; ev; q; dq; v_base; w_base; e_ori],'
 '%         Vorzeichen Soll - Ist, Basisgroessen null, e_ori = Endeffektor-Orientierung, Clipping wie V2.1'
-'coder.extrinsic(''desktop_v21_eori'');'
+'% sigma: 29x1 Standardabweichungen fuer gaussches Beobachtungsrauschen (D7), 0 = kein Rauschen.'
+'%        Das Rauschen kommt aus MATLAB (desktop_obs_randn), damit rng-Seeds wirken.'
+'coder.extrinsic(''desktop_v21_eori'', ''desktop_obs_randn'');'
 'y = u;'
+'if any(sigma > 0)'
+'    nz = zeros(29, 1);'
+'    nz = desktop_obs_randn();'
+'    y = y + sigma .* nz;'
+'end'
 'if mode == 1'
-'    q = u(13:19);'
-'    dq = u(20:26);'
+'    q = y(13:19);'
+'    dq = y(20:26);'
 '    e = zeros(3, 1);'
 '    e = desktop_v21_eori(q);'
-'    y = [-u(1:3); -u(4:6); q; dq; zeros(3, 1); zeros(3, 1); e];'
+'    y = [-y(1:3); -y(4:6); q; dq; zeros(3, 1); zeros(3, 1); e];'
 '    qlo = [-2*pi; -2.41; -2*pi; -2.66; -2.23; -2.01; -2*pi];'
 '    dqlim = [1.3963; 1.3963; 1.3963; 1.3963; 1.2218; 1.2218; 1.2218];'
 '    hi = [0.5*ones(3,1); 1.0*ones(3,1); -qlo; dqlim; 0.5*ones(3,1); 1.0*ones(3,1); pi*ones(3,1)];'

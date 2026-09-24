@@ -16,6 +16,8 @@ function cfg = desktop_config(varargin)
 %     T_path       Dauer der Halbkreisbahn [s] (Standard T)
 %     r, center    Halbkreis in der x-z-Ebene. Standard ist die Trainingsbahn, sie beginnt in der
 %                  gestreckten Nullstellung (A27)
+%     shape        'halfcircle' (Standard) oder 'triangle' (Dreieck ueber dieselben drei Eckpunkte wie in
+%                  calculate_kpi_spacekinova.m: Start, Scheitel bei T/2, Ende), nur bei ref_timing 'wall'
 %     mirror_x     true = gespiegelter Halbkreis (x = cx - r sin statt cx + r sin), gleicher Start und
 %                  gleiche Richtung nach unten. Annahme fuer die "mirrored half-circle" aus E1 (D5)
 %     base_mass    Basismasse [kg]. 1e9 haelt die Basis praktisch fest (D3)
@@ -25,6 +27,7 @@ function cfg = desktop_config(varargin)
 %                  Schritt, bei laengeren Schritten entspricht das 0,5 * 0,025 / Ts_agent
 %     cmd_scale    Faktor auf den Befehl nach der Kette (speedScale, A18)
 %     obs_mode     0 = Beobachtung wie im Training, 1 = wie Deploy-Skript V2.1 (A22)
+%     obs_noise    29x1 Standardabweichungen des Beobachtungsrauschens (Reihenfolge wie im Training), Standard 0
 %     ref_timing   'wall' = Referenz nach Zeit. 'sample' = Referenz rueckt pro Agentenschritt um Ts_ref_step
 %                  vor (Verhalten von V2.1), die Geschwindigkeitsreferenz bleibt die nominale
 %     Ts_ref_step  Referenzvorschub pro Schritt bei 'sample' [s], Standard 0,025
@@ -43,6 +46,7 @@ cfg.T           = 8.5;
 cfg.T_path      = [];
 cfg.r           = 0.2;
 cfg.center      = [0.0, -0.025, 1.687 - 0.2];
+cfg.shape       = 'halfcircle';
 cfg.mirror_x    = false;
 cfg.base_mass   = 65;
 cfg.delay_steps = 0;
@@ -50,6 +54,7 @@ cfg.damp_scale  = 1;
 cfg.slew        = 0.5;
 cfg.cmd_scale   = 1;
 cfg.obs_mode    = 0;
+cfg.obs_noise   = zeros(29, 1);
 cfg.ref_timing  = 'wall';
 cfg.Ts_ref_step = 0.025;
 cfg.explore     = false;

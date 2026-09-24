@@ -27,10 +27,10 @@ Laborreihe gebraucht wird. Einzige Ausnahme ist D10, falls das Agentenpaar auf d
 | D3 | Frei schwebende gegen fest montierte Basis in Simulation | AE.2, R2.2, R3.1, `tab:scope` | 2–3 h | 10 min | nein | ✅ 24.09. |
 | D4 | Set-Point in Simulation über die 15 Starts der Laborliste, 65 kg | R1.9, A24, A28, A43, Table VII | 2–3 h | 10 min | Agent für Table VII (b) | ✅ 24.09. |
 | D5 | Vorhandene CDR-Agenten unter den Bedingungen des Entwurfs E1 nachrechnen | CDR-Zahlen (📄), A44, R3.5 | 2–3 h | 30 min | nein | ✅ 25.09. |
-| D6 | Häufigkeit von NaN/Inf und grober Divergenz, Verteilung des Schritt-Rewards | R1.1, „≈ −13“ | 1 h | 15 min | nein | jederzeit |
-| D7 | Robustheit gegen Beobachtungsrauschen (optional) | R1.7 | 1–2 h | 10 min | nein | jederzeit |
-| D8 | Fig. 5 neu in Zielgröße | R1.4, AE.3 | 1 h | 5 min | Agent in Fig. 5 (c) | nach D1 |
-| D9 | Vorhandenen Sprungtest des Gen3 auswerten | H1, H2 (❓) | 1 h | keine | nein | jederzeit |
+| D6 | Häufigkeit von NaN/Inf und grober Divergenz, Verteilung des Schritt-Rewards | R1.1, „≈ −13“ | 1 h | 15 min | nein | ✅ 25.09. |
+| D7 | Robustheit gegen Beobachtungsrauschen (optional) | R1.7 | 1–2 h | 10 min | nein | ✅ 25.09. |
+| D8 | Fig. 5 neu in Zielgröße | R1.4, AE.3 | 1 h | 5 min | Agent in Fig. 5 (c) | Entwurf 25.09. |
+| D9 | Vorhandenen Sprungtest des Gen3 auswerten | H1, H2 (❓) | 1 h | keine | nein | ✅ 25.09. (H2) |
 | D10 | Gleiches Agentenpaar 40/10 Hz trainieren (optional) | A21, R1.6 auf der Hardware | 2–3 h | 1,5 h (1 Seed), 4–5 h (3 Seeds) | Entscheidung (d) | vor dem Labor, falls auf Hardware |
 | D11 | Algorithmenvergleich neu, 6 Verfahren × 3 Seeds | A8, A20, Fig. 4, Table II | 3–4 h | 20–30 h | Entscheidung (e) | nach der Ausrichtung |
 
@@ -322,30 +322,87 @@ Einzelbefunde (stochastisch, jeweils gegen `Optimized` unter derselben Störung)
 - `CDR1-4` (alle vier Merkmale) ist schon nominal deutlich schlechter (0,0096 m²). Das passt zu E1, wo dieser Agent
   bewusst weggelassen wurde.
 
-### D6 NaN/Inf und Schritt-Reward
+### D6 NaN/Inf und Schritt-Reward ✅ 25.09.2026
 
-- 200 Episoden mit untrainierter Policy (zufällige Gewichte, fester Seed) und 200 mit gestörtem `CDR2-4` im
-  40-Hz-Modell.
-- Gezählt werden Abbrüche durch NaN/Inf und durch grobe Divergenz. Dazu kommt die Verteilung des geclippten
-  Schritt-Rewards.
-- Die Häufigkeit im Training selbst liefert erst D10 oder D11, dort wird der Abbruchgrund je Episode mitgeloggt.
+Skript `desktop_d6_divergence.m`, Ergebnis `data/simulation/desktop/D6_divergence_20260925_010325.*` (300 Episoden).
+Fünf untrainierte PPO-Agenten (Standardnetze, zufällige Gewichte, Seeds 1–5) mit je 40 stochastischen Episoden
+entsprechen dem Anfang des Trainings. Dazu CDR2-4 mit 100 stochastischen Episoden unter Störungen der CDR-Phase 4
+(Basismasse 65 kg · max(0,5; 1 + 0,65 randn), Verzögerung 1–3 Schritte). 40-Hz-Modell, Halbkreis 8,5 s.
 
-### D7 Beobachtungsrauschen (optional)
+| Satz | Episoden | NaN/Inf | Abbruch EE-Fehler > 0,5 m | Schritt-Reward Median (10–90 %) | Schritte unter −13 |
+|---|---|---|---|---|---|
+| untrainiert | 200 | 0 | 28 (14 %) | −1,3 (−4,0 bis +1,6) | 0,04 % |
+| CDR2-4, Phase 4 | 100 | 0 | 0 | +5,6 (+1,4 bis +5,9) | 0 |
 
-- `CDR2-4` mit gaußschem Rauschen auf Gelenkwinkeln, Gelenkgeschwindigkeiten und Endeffektor-Fehler, vier Stufen,
-  je 20 Episoden.
-- Ergebnis: ein Satz oder eine kleine Abbildung für Sec. VII.
+- In keiner der 300 Episoden trat NaN oder Inf auf, auch kein Solverabbruch. Die Gelenke sind bewegungsgesteuert,
+  der Solver integriert nur die Basisdynamik. Die Häufigkeit im eigentlichen Training bleibt unbekannt (R1.1).
+- Die Aussage in Sec. III-C, −50 sei „etwa das Vierfache des typischen geclippten Schritt-Rewards (≈ −13)“, ist so
+  nicht haltbar. Typisch sind −1 bis −4 zu Beginn des Trainings und positive Werte beim trainierten Agenten. Die
+  größte mögliche geclippte Strafe pro Schritt ist 21,7. Richtig wäre etwa: „−50 übersteigt die größte geclippte
+  Strafe eines Schritts (21,7) und ist ein Vielfaches der typischen Schrittwerte“ (A52).
 
-### D8 Fig. 5 neu
+### D7 Beobachtungsrauschen ✅ 25.09.2026
 
-- Aus den Episoden von D1 in Spaltenbreite mit lesbarer Schrift. Das Skript kommt nach `fig/src/` im Paper-Repo.
-- Offen: welcher Agent in Fig. 5 gezeigt wird.
+Skript `desktop_d7_noise.m`, Ergebnis `data/simulation/desktop/D7_noise_20260925_011209.*` (182 Episoden). Dafür hat
+`SK_desktop` einen Rauscheingang im Block „Obs Transform“ bekommen (`p_obs_noise`, Zufallszahlen aus MATLAB, damit
+Seeds wirken). Deterministische Policy, 65 kg, Halbkreis 8,5 s, 10 Seeds je Stufe. Stufe × Rauschstärken aus dem
+Set-Point-Training (EE-Fehler 3 mm, EE-Geschwindigkeit 10 mm/s, Gelenkwinkel 2 mrad, Gelenkgeschwindigkeit
+10 mrad/s, Basisgrößen 5 mm/s bzw. 5 mrad/s, Orientierung 3 mrad). Keiner der beiden Agenten wurde mit Rauschen
+trainiert.
 
-### D9 Sprungtest
+| Stufe (alle Gruppen) | CDR2-4 (40 Hz), EE-MSE | Änderung | ppo_10hz (10 Hz), EE-MSE | Änderung |
+|---|---|---|---|---|
+| 0 | 0,00347 | – | 0,00438 | – |
+| 1 | 0,00347 | +0,1 % | 0,00437 | −0,4 % |
+| 2 | 0,00350 | +0,9 % | 0,00436 | −0,6 % |
+| 5 | 0,00367 | +5,8 % | 0,00442 | +0,7 % |
+| 10 | 0,00422 | +21 % | 0,00490 | +12 % |
 
-- `data/hardware/kinova_velocity_test_log.mat` (Sprung 5 °/s je Gelenk) auswerten: Verstärkung, Verzögerung,
-  Anstiegszeit.
-- Belegt oder ersetzt H1 und H2. Die gemessene Servoverzögerung kann in D2 als zusätzliche Verzögerung dienen.
+- Kein Abbruch, kein Lauf über 0,4 m. Bis zum Fünffachen des Trainingsrauschens ändert sich der Fehler um
+  höchstens 6 %.
+- Einzelne Gruppen auf Stufe 5: Am empfindlichsten ist CDR2-4 auf Rauschen der EE-Geschwindigkeit (+4 %) und der
+  Gelenkgeschwindigkeiten (+1 %). Rauschen auf EE-Position, Gelenkwinkeln und Basisgrößen ändert unter 0,5 %.
+- Für R1.7 und Sec. VII: In Simulation sind die Agenten gegen Messrauschen in realistischer Größe unempfindlich.
+  Nicht getestet sind systematische Fehler (Versatz, Verzögerung der Messung) und Fehler der Zielschätzung.
+
+### D8 Fig. 5 neu und der Einbruch im letzten Drittel (A51)
+
+Fig. 5 soll laut Paper den abgestimmten PPO-Agenten (`Optimized.mat`, Bayes, ohne CDR) zeigen. Nach Angabe des
+Nutzers folgte er früher der Bahn bis zum Ende und brach später im letzten Drittel ein.
+
+Befunde (25.09.2026):
+
+- Alle verfügbaren Modellstände ab dem 09.04. (Archiv und Git, darunter der Stand vom 20.04.) haben dieselben
+  Sättigungen, Filter, Rate Limiter und Geometrie. In jedem folgt `Optimized` bis etwa 5 s auf 2 mm genau und fällt
+  dann zurück (3 cm bei 6 s, 8 cm bei 7 s, 18 cm am Ende). Eine Modelländerung erklärt den Einbruch nicht.
+- `Optimized.mat` ist seit dem 21.04. unverändert (gleicher Git-Blob).
+- `calculate_kpi_spacekinova.m` lud am 21.04. fest `SpaceKinova_PPO_agent_motionprofile.mat` (Basis-PPO). Die
+  Abbildung `Figures/Simulation/optimized_ppo_circular_trajectoy_average.png` vom 21.04. deckt sich mit dem Basis-PPO
+  (Endpunkt [0,004; 1,289] m, Abweichung höchstens 1,5 cm), nicht mit `Optimized` (Endpunkt [0,178; 1,323] m). Die
+  „gute“ Abbildung zeigt damit sehr wahrscheinlich das Basis-PPO und ist falsch beschriftet.
+- Im letzten Drittel lässt `Optimized` das Schultergelenk J2 fast stehen (im Mittel −0,04 statt −0,21 rad/s beim
+  Basis-PPO). J2 erreicht dadurch nur −40° statt −68°. J6 setzt spät ein und ist auf 0,1 rad/s begrenzt. Der
+  Endeffektor fährt dann fast senkrecht nach unten und kreiselt bei z ≈ 1,32 m. Auf der Dreiecksbahn tritt derselbe
+  Einbruch auf. CDR2-4 und ppo_10hz zeigen ihn ebenfalls, nur das Basis-PPO nicht. Es ist gelerntes Verhalten.
+  Eine plausible, aber nicht belegte Erklärung ist, dass die Policy die Schulter ruhig hält, um die Basis zu schonen.
+- Neue Daten: `desktop_d8_fig5_data.m` (50 stochastische Episoden je Agent), Entwurf der Abbildung mit
+  `fig/src/plot_fig5_paths.py` im Paper-Repo (`fig/ppo40hz_paths.pdf`, noch nicht im Paper). Welche Agenten Fig. 5
+  zeigen soll und wie der Text in Sec. IV lautet, ist noch zu entscheiden.
+
+### D9 Sprungtest ✅ 25.09.2026
+
+Skript `desktop_d9_steptest.m`, Ergebnis `data/simulation/desktop/D9_steptest.csv`. Log
+`data/hardware/kinova_velocity_test_log.mat` aus `hardware/playback/kinova_test.m`: jedes Gelenk mit ±5 °/s für
+1,5 s. Die Zeitachse beginnt in jedem Abschnitt neu. Die Schleife lief mit 40–180 ms pro Schritt (Median 53 ms)
+statt der geplanten 10 ms.
+
+- Verstärkung (Geschwindigkeit aus den Winkeln / Befehl): 1,00 im Median (0,987–1,010) bei allen 14 Sprüngen.
+- Zeit bis 50 % des Befehls 55–104 ms, bis 90 % 100–168 ms. Die Auflösung liegt bei etwa einem Schritt (50 ms).
+- Bei der Frequenz der Halbkreisbahn (1/17 Hz) entspricht das 1–2° Phasenverzug.
+- H2 („near-unity amplitude retention and negligible phase lag“) ist damit für die Bahnfrequenz belegt. Die
+  Verzögerung von 50–150 ms ist gegenüber dem Regeltakt aber nicht klein (ein halber bis ganzer Schritt bei 10 Hz)
+  und sollte im Text genannt werden.
+- H1 (Clip-Schwelle ohne Wirkung) lässt sich mit diesem Log nicht prüfen. Dafür fehlen Daten.
 
 ### D10 Gleiches Agentenpaar 40/10 Hz (optional)
 

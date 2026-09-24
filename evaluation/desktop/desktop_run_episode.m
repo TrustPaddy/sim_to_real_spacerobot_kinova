@@ -39,7 +39,7 @@ agent.UseExplorationPolicy = cfg.explore;
 vars = struct('agent', agent, 'EE_ref', EE_ref, 'EE_vref', EE_vref, 'reward_init', 0, 'isdone_init', 0, ...
     'p_Ts', cfg.Ts, 'p_Ts_agent', cfg.Ts_agent, 'p_T', cfg.T, 'p_base_mass', cfg.base_mass, ...
     'p_delay_steps', cfg.delay_steps, 'p_damp_scale', cfg.damp_scale, 'p_slew', cfg.slew, ...
-    'p_cmd_scale', cfg.cmd_scale, 'p_obs_mode', cfg.obs_mode);
+    'p_cmd_scale', cfg.cmd_scale, 'p_obs_mode', cfg.obs_mode, 'p_obs_noise', obsNoise(cfg));
 fn = fieldnames(vars);
 for k = 1:numel(fn)
     assignin('base', fn{k}, vars.(fn{k}));
@@ -76,6 +76,11 @@ res.info = struct('wallTime', wallTime, 'trainTs', trainTs, 'matlab', version, .
 end
 
 % =====================================================================
+function sig = obsNoise(cfg)
+sig = zeros(29, 1);
+if isfield(cfg, 'obs_noise'), sig = cfg.obs_noise(:); end
+end
+
 function agent = loadAgent(file)
 persistent cache
 if isempty(cache), cache = containers.Map(); end
@@ -98,6 +103,13 @@ switch cfg.ref_timing
         y = cfg.center(2) + 0 * t;
         z = cfg.center(3) + cfg.r * cos(omega * t);
         traj = [x(:), y(:), z(:)];
+        if isfield(cfg, 'shape') && strcmp(cfg.shape, 'triangle')
+            P1 = cfg.center + [0, 0, cfg.r];
+            P2 = cfg.center + [sx * cfg.r, 0, 0];
+            P3 = cfg.center - [0, 0, cfg.r];
+            s = min(t(:) / (cfg.T_path / 2), 2);
+            traj = (s <= 1) .* ((1 - s) .* P1 + s .* P2) + (s > 1) .* ((2 - s) .* P2 + (s - 1) .* P3);
+        end
         vref = [zeros(1, 3); diff(traj) / mean(diff(t))];
     case 'sample'
         % Pro Agentenschritt rueckt die Referenzzeit um Ts_ref_step vor (V2.1). Zwischen den Schritten
