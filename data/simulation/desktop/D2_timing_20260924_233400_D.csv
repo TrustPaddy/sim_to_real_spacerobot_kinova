@@ -1,0 +1,8 @@
+part,agent,train_ms,step_ms,base,ref,obs_v21,scale,slew,hwrun,hw_steps,ood04,ood04_step,ood04_t,mse_ee,max_ee,completed,stop_reason,n_steps,ep_step_rmsdiff_hw
+D,ppo_10hz,100,110,fixed,wall,1,0.6,train,run_012_agent_train_seed10_okay,74,0,NaN,NaN,0.0288947526475234,0.293752389850879,1,none,78,0.0637858783936527
+D,ppo_10hz,100,110,fixed,wall,0,0.6,train,run_012_agent_train_seed10_okay,74,0,NaN,NaN,0.00570766680956411,0.176307663960352,1,none,78,0.0658957608377759
+D,ppo_10hz,100,110,fixed,wall,1,1,train,run_013_agent_train_seed5,83,1,25,2.64,0.0736958253892017,0.521266392421831,0,ep>0.5m,31,0.218937313393528
+D,ppo_10hz,100,110,fixed,wall,0,1,train,run_013_agent_train_seed5,83,0,NaN,NaN,0.00299482041296638,0.162885685926429,1,none,78,0.109652648790831
+D,ppo_10hz,100,110,fixed,wall,1,0.5,train,,NaN,0,NaN,NaN,0.00664139526369575,0.197526963765677,1,none,78,NaN
+D,ppo_10hz,100,110,fixed,wall,1,0.7,train,,NaN,0,NaN,NaN,0.0595652108608888,0.3781324823569,1,none,78,NaN
+D,ppo_10hz,100,110,fixed,wall,1,1,train,,NaN,1,25,2.64,0.0736958253892017,0.521266392421831,0,ep>0.5m,31,NaN
