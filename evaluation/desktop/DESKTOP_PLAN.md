@@ -29,7 +29,7 @@ Laborreihe gebraucht wird. Einzige Ausnahme ist D10, falls das Agentenpaar auf d
 | D5 | Vorhandene CDR-Agenten unter den Bedingungen des Entwurfs E1 nachrechnen | CDR-Zahlen (📄), A44, R3.5 | 2–3 h | 30 min | nein | ✅ 25.09. |
 | D6 | Häufigkeit von NaN/Inf und grober Divergenz, Verteilung des Schritt-Rewards | R1.1, „≈ −13“ | 1 h | 15 min | nein | ✅ 25.09. |
 | D7 | Robustheit gegen Beobachtungsrauschen (optional) | R1.7 | 1–2 h | 10 min | nein | ✅ 25.09. |
-| D8 | Fig. 5 neu in Zielgröße | R1.4, AE.3 | 1 h | 5 min | Agent in Fig. 5 (c) | Entwurf 25.09. |
+| D8 | Fig. 5 neu in Zielgröße | R1.4, AE.3 | 1 h | 5 min | Agent in Fig. 5 (c) | ✅ 25.09. |
 | D9 | Vorhandenen Sprungtest des Gen3 auswerten | H1, H2 (❓) | 1 h | keine | nein | ✅ 25.09. (H2) |
 | D10 | Gleiches Agentenpaar 40/10 Hz trainieren (optional) | A21, R1.6 auf der Hardware | 2–3 h | 1,5 h (1 Seed), 4–5 h (3 Seeds) | Entscheidung (d) | vor dem Labor, falls auf Hardware |
 | D11 | Algorithmenvergleich neu, 6 Verfahren × 3 Seeds | A8, A20, Fig. 4, Table II | 3–4 h | 20–30 h | Entscheidung (e) | nach der Ausrichtung |
@@ -365,7 +365,7 @@ trainiert.
 - Für R1.7 und Sec. VII: In Simulation sind die Agenten gegen Messrauschen in realistischer Größe unempfindlich.
   Nicht getestet sind systematische Fehler (Versatz, Verzögerung der Messung) und Fehler der Zielschätzung.
 
-### D8 Fig. 5 neu und der Einbruch im letzten Drittel (A51)
+### D8 Fig. 5 neu und der Einbruch im letzten Drittel (A51) ✅ 25.09.2026
 
 Fig. 5 soll laut Paper den abgestimmten PPO-Agenten (`Optimized.mat`, Bayes, ohne CDR) zeigen. Nach Angabe des
 Nutzers folgte er früher der Bahn bis zum Ende und brach später im letzten Drittel ein.
@@ -386,8 +386,8 @@ Befunde (25.09.2026):
   Einbruch auf. CDR2-4 und ppo_10hz zeigen ihn ebenfalls, nur das Basis-PPO nicht. Es ist gelerntes Verhalten.
   Eine plausible, aber nicht belegte Erklärung ist, dass die Policy die Schulter ruhig hält, um die Basis zu schonen.
 - Neue Daten: `desktop_d8_fig5_data.m` (50 stochastische Episoden je Agent), Entwurf der Abbildung mit
-  `fig/src/plot_fig5_paths.py` im Paper-Repo (`fig/ppo40hz_paths.pdf`, noch nicht im Paper). Welche Agenten Fig. 5
-  zeigen soll und wie der Text in Sec. IV lautet, ist noch zu entscheiden.
+  `fig/src/plot_fig5_paths.py` im Paper-Repo (`fig/ppo40hz_paths.pdf`). Seit 25.09. im Paper: Fig. 5 zeigt alle drei
+  Agenten, der neue Unterabschnitt IV-D (`sec:sim_tracking`) beschreibt den Einbruch. Offen bleibt die Ursache.
 
 ### D9 Sprungtest ✅ 25.09.2026
 
