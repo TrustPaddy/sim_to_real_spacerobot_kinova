@@ -90,9 +90,11 @@ function [EE_ref, EE_vref] = makeReference(cfg)
 % Halbkreis wie in calculate_kpi_spacekinova.m
 t = 0:cfg.Ts:cfg.T;
 omega = pi / cfg.T_path;
+sx = 1;
+if isfield(cfg, 'mirror_x') && cfg.mirror_x, sx = -1; end
 switch cfg.ref_timing
     case 'wall'
-        x = cfg.center(1) + cfg.r * sin(omega * t);
+        x = cfg.center(1) + sx * cfg.r * sin(omega * t);
         y = cfg.center(2) + 0 * t;
         z = cfg.center(3) + cfg.r * cos(omega * t);
         traj = [x(:), y(:), z(:)];
@@ -101,11 +103,11 @@ switch cfg.ref_timing
         % Pro Agentenschritt rueckt die Referenzzeit um Ts_ref_step vor (V2.1). Zwischen den Schritten
         % bleibt sie stehen, die Beobachtung tastet ohnehin nur zu den Schrittzeitpunkten ab.
         tau = min(floor(t / cfg.Ts_agent + 1e-9) * cfg.Ts_ref_step, cfg.T_path);
-        x = cfg.center(1) + cfg.r * sin(omega * tau);
+        x = cfg.center(1) + sx * cfg.r * sin(omega * tau);
         y = cfg.center(2) + 0 * tau;
         z = cfg.center(3) + cfg.r * cos(omega * tau);
         traj = [x(:), y(:), z(:)];
-        vref = [cfg.r * omega * cos(omega * tau(:)), 0 * tau(:), -cfg.r * omega * sin(omega * tau(:))];
+        vref = [sx * cfg.r * omega * cos(omega * tau(:)), 0 * tau(:), -cfg.r * omega * sin(omega * tau(:))];
         vref(1, :) = 0;
     otherwise
         error('desktop_run_episode:ref', 'Unbekanntes ref_timing: %s', cfg.ref_timing);

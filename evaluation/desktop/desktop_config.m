@@ -16,6 +16,8 @@ function cfg = desktop_config(varargin)
 %     T_path       Dauer der Halbkreisbahn [s] (Standard T)
 %     r, center    Halbkreis in der x-z-Ebene. Standard ist die Trainingsbahn, sie beginnt in der
 %                  gestreckten Nullstellung (A27)
+%     mirror_x     true = gespiegelter Halbkreis (x = cx - r sin statt cx + r sin), gleicher Start und
+%                  gleiche Richtung nach unten. Annahme fuer die "mirrored half-circle" aus E1 (D5)
 %     base_mass    Basismasse [kg]. 1e9 haelt die Basis praktisch fest (D3)
 %     delay_steps  Aktionsverzoegerung in Agentenschritten
 %     damp_scale   Faktor auf die Gelenkdaempfung
@@ -41,6 +43,7 @@ cfg.T           = 8.5;
 cfg.T_path      = [];
 cfg.r           = 0.2;
 cfg.center      = [0.0, -0.025, 1.687 - 0.2];
+cfg.mirror_x    = false;
 cfg.base_mass   = 65;
 cfg.delay_steps = 0;
 cfg.damp_scale  = 1;

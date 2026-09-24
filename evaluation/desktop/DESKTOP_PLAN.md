@@ -26,7 +26,7 @@ Laborreihe gebraucht wird. Einzige Ausnahme ist D10, falls das Agentenpaar auf d
 | D2 | Ratenreihe, gemessener Hardware-Takt, Referenz nach Wandzeit oder Schrittzahl | R2.3, R3.2, AE.1, „≈ 18 %“ | 2–3 h | 15 min | nein | ✅ 24.09. |
 | D3 | Frei schwebende gegen fest montierte Basis in Simulation | AE.2, R2.2, R3.1, `tab:scope` | 2–3 h | 10 min | nein | ✅ 24.09. |
 | D4 | Set-Point in Simulation über die 15 Starts der Laborliste, 65 kg | R1.9, A24, A28, A43, Table VII | 2–3 h | 10 min | Agent für Table VII (b) | ✅ 24.09. |
-| D5 | Vorhandene CDR-Agenten unter den Bedingungen des Entwurfs E1 nachrechnen | CDR-Zahlen (📄), A44, R3.5 | 2–3 h | 30 min | nein | jederzeit |
+| D5 | Vorhandene CDR-Agenten unter den Bedingungen des Entwurfs E1 nachrechnen | CDR-Zahlen (📄), A44, R3.5 | 2–3 h | 30 min | nein | ✅ 25.09. |
 | D6 | Häufigkeit von NaN/Inf und grober Divergenz, Verteilung des Schritt-Rewards | R1.1, „≈ −13“ | 1 h | 15 min | nein | jederzeit |
 | D7 | Robustheit gegen Beobachtungsrauschen (optional) | R1.7 | 1–2 h | 10 min | nein | jederzeit |
 | D8 | Fig. 5 neu in Zielgröße | R1.4, AE.3 | 1 h | 5 min | Agent in Fig. 5 (c) | nach D1 |
@@ -283,14 +283,44 @@ Skripte `desktop_build_point_models.m`, `desktop_run_setpoint.m`, `desktop_d4_se
   0,37 rad. Von den 15 Starts der Laborliste erreicht `rand2` auch mit 650 kg nur 2 das 50-mm-Kriterium. Table VII
   gilt damit nur für 650 kg und diesen einen Start.
 
-### D5 CDR-Agenten nachrechnen
+### D5 CDR-Agenten nachrechnen ✅ 25.09.2026
 
-- Agenten in `SavedAgents/MotionProfile/CDR/PPO/` (Trajectory, Trajectory2, Mass_inertia, Actuator_delay,
-  Friction, CDR1-4, CDR2-4) unter den Bedingungen des Entwurfs E1: gespiegelte Bahn, einzelne und kombinierte
-  Störungen.
-- Liefert Rohdaten für die CDR-Aussagen, die heute nur aus E1 stammen (📄 in `paper_numbers.md`).
-- Weicht das Ergebnis von E1 ab, liegt das womöglich am seit März geänderten Modell (A20, A23). Das kommt dann offen
-  in den Text.
+Skript `desktop_d5_cdr.m`, Ergebnis `data/simulation/desktop/D5_cdr_20260925_002408.*` (528 Episoden, 24 min).
+Acht Agenten bei 40 Hz in `SK_desktop` (65 kg), je Bedingung eine deterministische Episode und 10 stochastische
+Seeds. Bedingungen wie in E1: nominal, gespiegelter Halbkreis, 25 % Basismasse, Verzögerung 2 Schritte, Dämpfung
+×2, alle drei Störungen zusammen.
+
+**Die Annahmen treffen zu.** Mit `Optimized.mat` als Baseline ohne CDR, `Trajectory2.mat` als CDR-1-Agent und dem
+an x gespiegelten Halbkreis (`mirror_x`) ergeben sich die Werte aus E1 fast genau (stochastisch, 10 Seeds):
+
+| E1-Tabelle | Agent | K1 [m²] E1 / D5 | K2 [m] E1 / D5 | K3 [rad] E1 / D5 | K7 E1 / D5 |
+|---|---|---|---|---|---|
+| `tab:cdr1_results` | No-CDR (`Optimized`) | 0,0691 / 0,0694 | 0,3485 / 0,3444 | 0,0117 / 0,0115 | 211 / 207 |
+| `tab:cdr1_results` | CDR-1 (`Trajectory2`) | 0,0352 / 0,0354 | 0,2624 / 0,2602 | 0,0168 / 0,0297 | −97 / −97 |
+| `tab:cdr_combined_results` | No-CDR (`Optimized`) | 0,0055 / 0,0056 | 0,2103 / 0,2069 | 0,0120 / 0,0117 | 1042 / 1066 |
+| `tab:cdr_combined_results` | CDR-2 bis 4 (`CDR2-4`) | 0,0049 / 0,0051 | 0,1970 / 0,1990 | 0,0119 / 0,0118 | 1176 / 1168 |
+
+Nur K3 des CDR-1-Agenten weicht ab. Die übrigen Werte liegen innerhalb weniger Prozent. Die CDR-Zahlen des Papers
+haben damit Rohdaten und ein Skript.
+
+Einzelbefunde (stochastisch, jeweils gegen `Optimized` unter derselben Störung):
+
+- **CDR-1** (`Trajectory2`, gespiegelte Bahn): K1 −49 %, K2 −24 %. Bestätigt „approximately halved“.
+  `Trajectory.mat` (erste Fassung) ist auf der gespiegelten Bahn schlechter als die Baseline (0,081 m²).
+- **CDR-2** (`Mass_inertia`, 25 % Masse): K1 −13 %, Return +8 %. Bestätigt „small but consistent“.
+- **CDR-3** (`Actuator_delay`, 2 Schritte): Basisorientierung (K3) −32 %, aber K1 +85 % (0,0076 gegen
+  0,0041 m²). Der Agent ist auch ohne Verzögerung fast doppelt so ungenau (0,0076 gegen 0,0039 m²). „slightly
+  lower tracking accuracy“ untertreibt das.
+- **CDR-4** (`Friction`, Dämpfung ×2): Für jeden Agenten ist das Ergebnis mit doppelter Dämpfung identisch mit dem
+  nominalen. Die Dämpfung wirkt im Modell nicht auf die Bewegung (A23). „largely neutral“ ist damit strukturell
+  und kein Lerneffekt.
+- **CDR-2 bis 4** (`CDR2-4`, alle drei Störungen): K1 −9 % stochastisch, −10 % deterministisch. Das Paper nennt
+  ≈ 11 % (E1: −10,9 %).
+- Die Störung „2 Schritte Verzögerung“ ändert K1 bei allen Agenten um höchstens 5 %. 25 % Basismasse erhöht K1
+  bei Optimized, Friction, Mass_inertia, CDR2-4 und Trajectory2 um 28 bis 57 %, bei den nominal schwächeren
+  Agenten (Actuator_delay, Trajectory, CDR1-4) um höchstens 12 %.
+- `CDR1-4` (alle vier Merkmale) ist schon nominal deutlich schlechter (0,0096 m²). Das passt zu E1, wo dieser Agent
+  bewusst weggelassen wurde.
 
 ### D6 NaN/Inf und Schritt-Reward
 
