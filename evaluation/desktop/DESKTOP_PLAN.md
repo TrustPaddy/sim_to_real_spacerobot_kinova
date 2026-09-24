@@ -24,8 +24,8 @@ Laborreihe gebraucht wird. Einzige Ausnahme ist D10, falls das Agentenpaar auf d
 | D0 | Grundlage: parametrisierte Kopie des 40-Hz-Modells, Auswerteskript mit deterministischer Policy und vollem Log | Voraussetzung für D1 bis D3, D6, D7 | 2–3 h | 10 min | nein | ✅ 24.09. |
 | D1 | Ratenversuch 2×2: beide Tracking-Agenten bei 40 und 10 Hz im selben Modell | R1.6, A9, A33, A44, A39 | 1–2 h | 15 min | Bedingungen (a) | ✅ 24.09. |
 | D2 | Ratenreihe, gemessener Hardware-Takt, Referenz nach Wandzeit oder Schrittzahl | R2.3, R3.2, AE.1, „≈ 18 %“ | 2–3 h | 15 min | nein | ✅ 24.09. |
-| D3 | Frei schwebende gegen fest montierte Basis in Simulation | AE.2, R2.2, R3.1, `tab:scope` | 2–3 h | 10 min | nein | jederzeit |
-| D4 | Set-Point in Simulation über die 15 Starts der Laborliste, 65 kg | R1.9, A24, A28, A43, Table VII | 2–3 h | 10 min | Agent für Table VII (b) | jederzeit |
+| D3 | Frei schwebende gegen fest montierte Basis in Simulation | AE.2, R2.2, R3.1, `tab:scope` | 2–3 h | 10 min | nein | ✅ 24.09. |
+| D4 | Set-Point in Simulation über die 15 Starts der Laborliste, 65 kg | R1.9, A24, A28, A43, Table VII | 2–3 h | 10 min | Agent für Table VII (b) | ✅ 24.09. |
 | D5 | Vorhandene CDR-Agenten unter den Bedingungen des Entwurfs E1 nachrechnen | CDR-Zahlen (📄), A44, R3.5 | 2–3 h | 30 min | nein | jederzeit |
 | D6 | Häufigkeit von NaN/Inf und grober Divergenz, Verteilung des Schritt-Rewards | R1.1, „≈ −13“ | 1 h | 15 min | nein | jederzeit |
 | D7 | Robustheit gegen Beobachtungsrauschen (optional) | R1.7 | 1–2 h | 10 min | nein | jederzeit |
@@ -204,25 +204,84 @@ Bahn ohne OOD-Stopp abfahren, der größte Fehler etwa 0,1–0,3 m.
 **Folgerung:** In Simulation erklärt der Beobachtungsfehler von V2.1 und V2.2 (A22) das Scheitern der
 40-Hz-Agenten. Die Ratenreduktion allein erklärt es nicht (A48). Die Laborreihe prüft das auf der Hardware.
 
-### D3 Frei schwebende gegen fest montierte Basis
+### D3 Frei schwebende gegen fest montierte Basis ✅ 24.09.2026
 
-- Modellvariante mit fest verbundener Basis. Die Basisbeobachtungen sind null wie auf der Hardware.
-- `CDR2-4` und `ppo_10hz` jeweils mit freier und fester Basis, nominal und gestört.
-- Kennzahlen: Endeffektor-Fehler, Verschiebung und Drehung der Basis, Unterschied der Gelenkbefehle.
-- Ergebnis: Die Lücke zwischen Simulation und Hardware zerfällt in zwei Teile. Der Anteil der Basisdynamik ist
-  der Unterschied zwischen freier und fester Basis in Simulation. Der Anteil von Schnittstelle und Timing ist der
-  Unterschied zwischen fester Basis in Simulation und Hardware (Kampagne). Zahlen für `tab:scope`.
+Skript `desktop_d3_base.m`, Ergebnis `data/simulation/desktop/D3_base_20260924_234944.*`. Feste Basis über
+`base_mass = 1e9` (Basisdrehung dann unter 6·10⁻⁹ rad). Deterministisch, korrekte Beobachtung, Wandzeit.
 
-### D4 Set-Point über die Laborstartliste
+**Teil A** (Halbkreis 8,5 s, 65 kg gegen feste Basis):
 
-- Starts S00 bis S14 aus `hardware/campaign/setpoint_starts.mat`, Ziel [0,479, −0,005, 1,136] m, 25 s,
-  deterministisch.
-- `test_agent_fixed1` in seinem Trainingsmodell `_point_fixed` und im frei schwebenden Modell mit 65 kg.
-  `test_agent_rand2` im frei schwebenden Modell mit 65 kg und mit 650 kg (bisheriger Stand von Table VII).
-- Log: Endfehler, Setzzeit, Konvergenz, Soft-Limit-Bremsung und Kontakt mit Gelenkgrenzen je Gelenk (A43).
-- Optional die 50 stochastischen Episoden vom festen OOD-Start, um die alte Table VII zu reproduzieren.
-- Ergebnis: Endfehler über $d_0$ in Simulation, passend zu `fig_setpoint_d0.pdf` der Laborreihe, und eine neue
-  Table VII. Der kinematische Trockenlauf vom 22.09. enthält weder Dynamik noch Rauschen, D4 ergänzt beides.
+| Agent | Rate | EE-MSE frei [m²] | EE-MSE fest [m²] | Änderung | Basisdrehung frei, max |
+|---|---|---|---|---|---|
+| CDR2-4 | 40 Hz | 0,00347 | 0,00244 | −30 % | 0,012 rad |
+| CDR2-4 | 10 Hz | 0,00404 | 0,00320 | −21 % | 0,016 rad |
+| Optimized | 40 Hz | 0,00357 | 0,00212 | −41 % | 0,018 rad |
+| Optimized | 10 Hz | 0,00449 | 0,00290 | −35 % | 0,017 rad |
+| PPO_base | 40 Hz | 0,00011 | 0,00033 | +209 % | 0,056 rad |
+| PPO_base | 10 Hz | 0,00127 | 0,00112 | −12 % | 0,051 rad |
+| ppo_10hz | 40 Hz | 0,00431 | 0,00307 | −29 % | 0,011 rad |
+| ppo_10hz | 10 Hz | 0,00438 | 0,00298 | −32 % | 0,013 rad |
+
+- Auf fester Basis ist der EE-Fehler meist 12 bis 41 % kleiner. Die Rückwirkung der Armbewegung auf die Basis
+  trägt in Simulation also merklich zum Fehler bei. Ein Test auf fester Basis ist damit eher etwas leichter als
+  der frei schwebende Fall.
+- Ausnahme PPO_base bei 40 Hz: Der Fehler steigt auf fester Basis, bleibt aber sehr klein (0,00033 m²). Die
+  Rohaktionen unterscheiden sich stark (RMS-Differenz 0,50 gegen unter 0,013 bei den anderen Agenten). PPO_base
+  reagiert also deutlich auf die Basisbeobachtungen, die auf fester Basis null sind.
+- Alle Episoden laufen durch. Die Basisverschiebung ist nicht geloggt (`q_base` ist kein Positionssignal).
+
+**Teil B, Zerlegung der Lücke an den Hardwareläufen 074–078** (V2.3: ppo_10hz, korrekte Beobachtung, Bahn 17 s,
+Faktor 0,35, Wandzeit, Rate Limiter 0,1 s pro Schritt, Schritt 165 und 175 ms, Hardware im Mittel 174 ms):
+
+| Stufe | RMS-Fehler | größter Fehler | Abweichung vom Hardwareverlauf (RMS) |
+|---|---|---|---|
+| Simulation, Basis frei (65 kg) | 65,5 mm | 193–195 mm | 15,7–16,4 mm |
+| Simulation, Basis fest | 54,3–54,8 mm | 160–162 mm | 3,6–4,5 mm |
+| Hardware 074–078 | 52,7 ± 0,9 mm | 156 mm | – |
+
+- Die Simulation mit fester Basis und den Einstellungen von V2.3 trifft die Hardware auf etwa 4 mm genau (RMS
+  des Unterschieds der Fehlerverläufe), der RMS-Fehler weicht um 2 mm ab (4 %).
+- Von der Lücke zwischen frei schwebender Simulation und Hardware (12,8 mm RMS) entfallen damit etwa 11 mm auf die
+  fehlende Basisdynamik und etwa 2 mm auf Schnittstelle, Servodynamik und Timing.
+- Einschränkung: nur ein Agent, eine Bahn und fünf Läufe mit Faktor 0,35 und halber Bahngeschwindigkeit. Für
+  Faktor 1,0 und die Trainingsbahn liefert die Laborreihe (`T10_nom`) den Vergleich.
+
+### D4 Set-Point über die Laborstartliste ✅ 24.09.2026
+
+Skripte `desktop_build_point_models.m`, `desktop_run_setpoint.m`, `desktop_d4_setpoint.m`. Ergebnis
+`data/simulation/desktop/D4_setpoint_20260924_235241.*` (4 Prüfläufe, 120 Episoden).
+
+- Modelle: `SK_point_fixed` (Kopie des Trainingsmodells von `test_agent_fixed1`: Basis verschweißt, Schwerkraft,
+  Basisbeobachtungen null, Rauschblock) und `SK_point` (frei schwebend, Basismasse und Startpose als Variablen).
+  `SK_point` reproduziert das Original bei 650 kg (Abweichung 8·10⁻⁹ m). Das Original `_point_fixed` läuft mit
+  `sim()` nicht, weil der Rauschblock eine kontinuierliche Abtastzeit erbt. In der Kopie rechnet er im
+  Agenten-Takt 0,1 s. `SK_point_fixed` ist wiederholbar (3·10⁻⁹ m).
+- Starts S00–S14 der Laborliste, Ziel [0,479, −0,005, 1,136] m, 25 s, Abbruch wie im Training. Dazu der alte
+  OOD-Start [0 −90 0 0 0 0 0]° von Table VII. Deterministisch, außer wo angegeben.
+
+| Satz | Endfehler < 50 mm | Erfolgsabbruch | Endfehler Median | Endfehler max |
+|---|---|---|---|---|
+| fixed1 im Trainingsmodell (fest, Schwerkraft) | 15/15 | 13/15 | 18 mm | 22 mm |
+| fixed1 wie oben mit Trainingsrauschen (Phase 4) | 15/15 | 13/15 | 18 mm | 22 mm |
+| fixed1 frei schwebend, 65 kg | 12/15 | 4/15 | 25 mm | 131 mm |
+| rand2 frei schwebend, 65 kg | 3/15 | 0/15 | 72 mm | 134 mm |
+| rand2 frei schwebend, 650 kg | 2/15 | 0/15 | 67 mm | 74 mm |
+
+- **Hardware-Agent `fixed1` in seinem Trainingsmodell:** Alle 15 Starts enden unter 50 mm (15–22 mm), 13 mit
+  Erfolgsabbruch nach 2,7–11,6 s. S00 und S04 bleiben bei 22 mm stehen, J6 steht dort an der Trainingsgrenze
+  115,2°. Das deckt sich mit dem kinematischen Trockenlauf vom 22.09. Das Rauschen ändert daran nichts. Kein
+  Gelenk überschreitet eine Hardwaregrenze des Gen3 (J4 höchstens 130°, J6 höchstens 115,2°).
+- **Vorhersage für die Laborreihe `S10_nom`:** In Simulation erreichen alle 15 Starts das 50-mm-Kriterium, der
+  Endfehler liegt unabhängig von $d_0$ bei 15–22 mm. S00 und S04 (und eventuell S08, S09, S14 mit J6 an der
+  Grenze) sind die Kandidaten für Stillstand knapp über dem Trainingskriterium.
+- **`fixed1` auf frei schwebender Basis:** Die fernen Starts (S11, S13, S14) verfehlen 50 mm. Der Agent ist auf
+  fester Basis trainiert und nicht für die Basisrückwirkung ausgelegt.
+- **Table VII (A24):** `rand2` vom alten OOD-Start mit 650 kg reproduziert die Tabelle deterministisch
+  (Setzzeit 11,98 s, nächste Annäherung 11,7 mm, Endfehler 25 mm). Stochastisch (20 Seeds) liegt der Endfehler bei
+  37 ± 15 mm, 15 von 20 enden unter 50 mm, alle kommen dem Ziel näher als 50 mm (nächste Annäherung 19 ± 12 mm).
+  **Mit 65 kg scheitert derselbe Agent**: Endfehler 190 ± 30 mm, keine Episode unter 50 mm, Basisdrehung
+  0,37 rad. Von den 15 Starts der Laborliste erreicht `rand2` auch mit 650 kg nur 2 das 50-mm-Kriterium. Table VII
+  gilt damit nur für 650 kg und diesen einen Start.
 
 ### D5 CDR-Agenten nachrechnen
 

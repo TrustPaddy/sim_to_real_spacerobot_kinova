@@ -139,6 +139,16 @@ m.ori_max = max(orin);
 wb = getTs(logsout, 'w_base');
 m.w_mean = mean(vecnorm(toNx(wb.Data, 3), 2, 2));
 
+% Basisbewegung (Position aus dem 6-DOF-Joint, falls geloggt)
+qb = getTs(logsout, 'q_base');
+m.base_disp_max = NaN;
+if ~isempty(qb)
+    X = toNx(qb.Data, []);
+    if size(X, 2) == 3
+        m.base_disp_max = max(vecnorm(X - X(1, :), 2, 2));
+    end
+end
+
 % OOD-Schwelle der Hardware (0,4 m), ausgewertet zu den Agentenschritten
 epn_agent = interp1(ee.Time(:), epn, t_agent, 'previous', 'extrap');
 k04 = find(epn_agent > 0.4, 1);
