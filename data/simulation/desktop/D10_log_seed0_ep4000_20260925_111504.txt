@@ -1,0 +1,18 @@
+SpaceKinova eingerichtet: C:\Users\Deermste\Documents\FraUas\BachelorThesis\Matlab
+Starting parallel pool (parpool) using the 'Processes' profile ...
+Preserving jobs with IDs: 2 because they contain crash dump files.
+You can use 'delete(myCluster.Jobs)' to remove all jobs created with profile Processes. To create 'myCluster' use 'myCluster = parcluster('Processes')'.
+Parallel pool using the 'Processes' profile is shutting down.
+
+{Error using parpool (line 43)
+Parallel pool failed to start with the following error. For more detailed information, validate the profile 'Processes' in the Cluster
+Profile Manager.
+
+Error in desktop_d10_train (line 101)
+if isempty(pool), pool = parpool('Processes'); end
+                         ^^^^^^^^^^^^^^^^^^^^
+Caused by:
+    Error using parallel.internal.pool.AbstractClusterPool>iStartClient (line 812)
+    The parallel pool job errored with the following message: MATLAB worker shut down unexpectedly with status 1 during task execution.
+        MATLAB worker shut down unexpectedly with status 1 during task execution.
+} 

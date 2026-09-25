@@ -404,15 +404,90 @@ statt der geplanten 10 ms.
   und sollte im Text genannt werden.
 - H1 (Clip-Schwelle ohne Wirkung) lässt sich mit diesem Log nicht prüfen. Dafür fehlen Daten.
 
-### D10 Gleiches Agentenpaar 40/10 Hz (optional)
+### D10 Gleiches Agentenpaar 40/10 Hz ✅ 25.09.2026 (Seeds 0 bis 2)
+
+**Ergebnis über drei Seeds** (gleiches Budget von 340 000 Agentenschritten: 1000 Episoden bei 40 Hz, 4000 bei
+10 Hz). Seeds 1 und 2 mit `desktop_d10_run([1 2], 4000, false)`, Auswertung
+`data/simulation/desktop/D10_eval_seed12_ep4000_20260925_123422.*`, zusammen mit den beiden Seed-0-Dateien unten.
+EE-MSE [m²], Mittelwert ± Std über die drei Seeds, jeder Seed gemittelt über den Satz:
+
+| Satz | 40-Hz-Agenten bei 40 Hz | 10-Hz-Agenten bei 10 Hz | 40-Hz-Agenten bei 10 Hz | 10-Hz-Agenten bei 40 Hz |
+|---|---|---|---|---|
+| `mass` (deterministisch, 20 Massenziehungen) | 0,00379 ± 0,00074 | 0,00382 ± 0,00117 | 0,00393 ± 0,00037 | 0,00455 ± 0,00225 |
+| `nominal` (deterministisch) | 0,00393 ± 0,00073 | 0,00394 ± 0,00123 | 0,00406 ± 0,00036 | 0,00467 ± 0,00233 |
+| `stoch` (20 Seeds der Policy) | 0,00470 ± 0,00027 | 0,00404 ± 0,00133 | 0,00483 ± 0,00024 | 0,00485 ± 0,00264 |
+
+Je Seed (`mass`): Verhältnis 10-Hz- zu 40-Hz-Agent bei eigener Rate 1,11 / 0,78 / 1,12. 40-Hz-Agent bei 10 Hz
+−7 / +10 / +13 %. 10-Hz-Agent bei 40 Hz +39 / 0 / +7 %.
+
+- **Bei eigener Rate sind beide Raten im Mittel gleich genau** (0,00379 gegen 0,00382 m²). Die Streuung zwischen
+  den Seeds (Std 20–30 %) ist viel größer als der Unterschied zwischen den Raten. Seed 0 (+11 % für 10 Hz) war
+  kein typischer Fall.
+- Die fremde Rate kostet im Mittel wenig: 40-Hz-Agenten verlieren bei 10 Hz 4 %, 10-Hz-Agenten bei 40 Hz 19 %.
+  Den großen Wert trägt ein einzelner Seed (+39 %).
+- Alle 688 Episoden der D10-Auswertung laufen ohne Abbruch durch. Der größte Fehler liegt bei den fairen Agenten
+  unter 0,26 m.
+- Alle Lernkurven sind am Ende fast flach (Anstieg über die letzten 5 % der Episoden unter 1 %).
+- Deutung für R1.6: Bei gleichem Training und gleichem Schrittbudget ist 10 Hz in Simulation für diese Aufgabe
+  nicht schlechter als 40 Hz. Das stützt die Empfehlung, mit der erreichbaren Rate zu trainieren. Es spricht
+  zusammen mit D1 und D2 dagegen, dass die niedrigere Rate allein die Hardwareläufe der 40-Hz-Agenten scheitern
+  ließ.
+
+Aufbau und Einzelheiten:
 
 - Zwei PPO-Agenten mit demselben Skript, demselben Modell aus D0, den Bayes-Hyperparametern und 65 kg, ohne CDR.
   Verschieden sind nur Agentenrate und Solver-Schritt. 1000 Episoden, Seed 0, auf Wunsch Seeds 0 bis 2.
 - Damit ist der Ratenvergleich frei von den Störgrößen aus A21 und A33.
-- Soll das Paar auf die Hardware, muss es vor dem Labortermin fertig sein und als neue Bedingung in
-  `campaign_plan.m` stehen. Vorher prüfen, ob in R2026a gespeicherte Agenten in R2025b auf dem Laptop laden. Sonst
-  den Laptop auf R2026a bringen oder R2025b hier vollständig installieren.
-- Risiko: Das Training konvergiert beim ersten Versuch eventuell nicht.
+- Entscheidungen des Nutzers vom 25.09.: erst Seed 0, Seeds 1 und 2 nach dem Ergebnis. Hyperparameter pro
+  Agentenschritt gleich (γ = 0,99, Experience Horizon 600). Bei 10 Hz ist ihr zeitlicher Horizont damit viermal
+  länger (γ etwa 10 s statt 2,5 s), das muss im Text stehen. Über die Hardware wird nach dem Ergebnis entschieden.
+- Auf dem Deploy-Laptop ist seit dem 25.09. R2026a installiert (Nutzerangabe). Die Kompatibilitätsfrage mit R2025b
+  entfällt damit. Das Paper nennt für die alten Läufe weiter R2025b (`meta.matlabVersion`).
+- Skripte: `desktop_d10_train.m` (ein Agent, Optionen wie `Optimized.mat` ausgelesen: 600 / 200 / 10 Epochen /
+  Clip 0,2 / γ 0,99 / GAE 0,95 / Entropie 1e-3 / 5,7e-5 und 1e-3 / 2 × 128 ReLU, 40 Hz mit Solver 5 ms, 10 Hz mit
+  20 ms, async mit 8 Workern), `desktop_d10_run.m` (beide Trainings, dann Auswertung mit `desktop_d1_rates` und
+  denselben Sätzen wie D1, `Optimized` als Referenz). Agenten in `SavedAgents/MotionProfile/D10/`, Lernkurven und
+  Auswertung in `data/simulation/desktop/D10_*`.
+- Kurztest vom 25.09.: 16 Episoden bei 40 Hz in 1,1 min einschließlich Kompilieren. Asynchrones Training ist auch
+  mit festem Seed nicht bitgenau wiederholbar.
+
+**Ergebnis Seed 0 allein**, vor den Seeds 1 und 2 geschrieben. Die Deutung am Ende ist durch das Ergebnis über
+drei Seeds oben überholt (Trainingszeit 7,1 min bei 40 Hz, 1,9 min bei 10 Hz mit 1000 und 8,1 min mit 4000 Episoden).
+Dateien: Agenten `SavedAgents/MotionProfile/D10/D10_ppo_40hz_seed0.mat`, `D10_ppo_10hz_seed0.mat`,
+`D10_ppo_10hz_seed0_ep4000.mat`. Lernkurven `data/simulation/desktop/D10_*_train_*.csv`, Auswertung
+`D10_eval_seed0_20260925_111352.*` (beide 1000-Episoden-Agenten und `Optimized`) und
+`D10_eval_seed0_ep4000_20260925_112843.*`, Konsolenlogs `D10_log_*.txt`.
+
+- **Gleiche Episodenzahl ist kein fairer Vergleich.** Bei 10 Hz hat eine Episode 85 statt 340 Schritte. Nach 1000
+  Episoden hat der 10-Hz-Agent ein Viertel der Schritte und entsprechend weniger Updates gesehen. Seine Lernkurve
+  steigt dann noch deutlich (Mittel der letzten 50 Episoden 141, bis Episode 650 vorzeitige Abbrüche), er ist
+  nicht auskonvergiert. Deshalb zusätzlich 4000 Episoden bei 10 Hz, also dasselbe Budget an Agentenschritten
+  (340 000) wie 1000 Episoden bei 40 Hz. Diese Kurve flacht ab (letzte 100 Episoden 381, davor 377). Die
+  40-Hz-Kurve ist nach 1000 Episoden ebenfalls fast flach (1406, dann 1413).
+
+EE-MSE [m²], deterministisch, Satz `mass` (20 Massenziehungen wie D1, Mittelwert), Solver 5 ms, alle Episoden
+ohne Abbruch:
+
+| Agent | trainiert | Schritte im Training | bei 40 Hz | bei 10 Hz | Änderung bei fremder Rate |
+|---|---|---|---|---|---|
+| D10 40 Hz | 40 Hz, 1000 Ep. | 340 000 | **0,00460** | 0,00427 | −7 % |
+| D10 10 Hz | 10 Hz, 4000 Ep. | 340 000 | 0,00710 | **0,00511** | +39 % |
+| D10 10 Hz | 10 Hz, 1000 Ep. | 85 000 | 0,01487 | 0,02034 | – |
+| Optimized (Referenz) | 40 Hz, Originalmodell | – | 0,00347 | 0,00438 | +26 % |
+
+- Bei jeweils eigener Rate und gleichem Schrittbudget liegt der 10-Hz-Agent um 11 % über dem 40-Hz-Agenten
+  (0,00511 gegen 0,00460 m²). Stochastisch sind es 0,00554 gegen 0,00460 m² (+20 %).
+- Der D10-40-Hz-Agent wird bei 10 Hz nicht schlechter (−7 %), anders als `Optimized` (+26 %) und CDR2-4 (+17 %,
+  D1). Mit einem Seed lässt sich nicht sagen, ob das am Agenten oder am Zufall liegt.
+- Der 10-Hz-Agent verliert bei 40 Hz 39 %. Er ist auf die längere Wirkung jedes Befehls eingestellt.
+- Keine der 344 Episoden bricht ab. Der größte Fehler liegt unter 0,26 m, nur beim nicht auskonvergierten
+  1000-Episoden-10-Hz-Agenten bei bis zu 0,37 m. Der größte Fehler der beiden fairen Agenten liegt nominal mit
+  0,19–0,24 m in derselben Größe wie bei `Optimized` (0,18 m). Ob auch die neuen Agenten im letzten Drittel
+  zurückfallen (A51), ist nicht ausgewertet.
+- J6 ist beim 10-Hz-Agenten deterministisch in 100 % der Schritte gesättigt, beim 40-Hz-Agenten in 74–80 %.
+- Deutung für R1.6: Bei gleichem Training und gleichem Schrittbudget ist 10 Hz in Simulation etwas ungenauer als
+  40 Hz, scheitert aber nicht. Der Unterschied (11 %) ist kleiner als der zwischen `Optimized` und dem neuen
+  40-Hz-Agenten (0,00347 gegen 0,00460 m², 33 %). Seeds 1 und 2 würden zeigen, wie groß die Streuung ist.
 
 ### D11 Algorithmenvergleich neu
 

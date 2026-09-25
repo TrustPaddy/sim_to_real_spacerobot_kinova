@@ -1,7 +1,10 @@
-function [E, S] = desktop_d1_rates(nDraw)
+function [E, S] = desktop_d1_rates(nDraw, ag, prefix)
 %DESKTOP_D1_RATES  Ratenversuch 2x2 in Simulation (Desktop-Plan D1, R1.6, A9, A33, A44).
 %   [E, S] = desktop_d1_rates()     volle Reihe (20 Ziehungen je Satz)
 %   [E, S] = desktop_d1_rates(2)    Kurztest
+%   [E, S] = desktop_d1_rates(20, ag, 'D10_eval')   dieselben Saetze fuer andere Agenten (D10). ag ist ein
+%                                   struct-Array mit label, file, trainHz. Der Satz e1 und der 6,5-kg-Lauf
+%                                   entfallen dann, solange die Agenten CDR2-4 und ppo_10hz fehlen
 %
 %   Jeder Agent laeuft bei 40 Hz und bei 10 Hz im selben Modell (SK_desktop, Solver 5 ms, Halbkreis 8,5 s,
 %   Referenz nach Wandzeit). Filter und Rate Limiter rechnen im Agenten-Takt, wie auf der Hardware.
@@ -22,16 +25,19 @@ function [E, S] = desktop_d1_rates(nDraw)
 %   Ergebnis: data/simulation/desktop/D1_rates_<Zeit>.mat, _episodes.csv, _summary.csv
 
 if nargin < 1, nDraw = 20; end
+if nargin < 3, prefix = 'D1_rates'; end
 setup_project;
 desktop_build_model();
 
-ag = struct( ...
-    'label', {'CDR2-4', 'Optimized', 'PPO_base', 'ppo_10hz'}, ...
-    'file', {sk_path('SavedAgents', 'MotionProfile', 'CDR', 'PPO', 'CDR2-4.mat'), ...
-             sk_path('SavedAgents', 'MotionProfile', 'Circle', 'PPO', 'Optimized.mat'), ...
-             sk_path('SavedAgents', 'MotionProfile', 'Circle', 'PPO', 'SpaceKinova_PPO_agent_motionprofile.mat'), ...
-             sk_path('SavedAgents', 'MotionProfile', 'Circle', 'PPO', 'ppo_10hz.mat')}, ...
-    'trainHz', {40, 40, 40, 10});
+if nargin < 2 || isempty(ag)
+    ag = struct( ...
+        'label', {'CDR2-4', 'Optimized', 'PPO_base', 'ppo_10hz'}, ...
+        'file', {sk_path('SavedAgents', 'MotionProfile', 'CDR', 'PPO', 'CDR2-4.mat'), ...
+                 sk_path('SavedAgents', 'MotionProfile', 'Circle', 'PPO', 'Optimized.mat'), ...
+                 sk_path('SavedAgents', 'MotionProfile', 'Circle', 'PPO', 'SpaceKinova_PPO_agent_motionprofile.mat'), ...
+                 sk_path('SavedAgents', 'MotionProfile', 'Circle', 'PPO', 'ppo_10hz.mat')}, ...
+        'trainHz', {40, 40, 40, 10});
+end
 rates = [40 10];
 
 % Massenziehungen (fest, fuer alle Agenten gleich)
@@ -59,11 +65,13 @@ for a = 1:numel(ag)
         end
     end
 end
-e1 = {'agentFile', ag(1).file, 'agentLabel', ag(1).label, 'Ts', 0.005, 'Ts_agent', 0.025, ...
-    'base_mass', 16.25, 'delay_steps', 2, 'damp_scale', 2, 'keepTs', false};
-jobs(end + 1, :) = {'e1', 0, desktop_config(e1{:})};
-for k = 1:nDraw
-    jobs(end + 1, :) = {'e1_stoch', k, desktop_config(e1{:}, 'explore', true, 'seed', k)}; %#ok<AGROW>
+if strcmp(ag(1).label, 'CDR2-4')
+    e1 = {'agentFile', ag(1).file, 'agentLabel', ag(1).label, 'Ts', 0.005, 'Ts_agent', 0.025, ...
+        'base_mass', 16.25, 'delay_steps', 2, 'damp_scale', 2, 'keepTs', false};
+    jobs(end + 1, :) = {'e1', 0, desktop_config(e1{:})};
+    for k = 1:nDraw
+        jobs(end + 1, :) = {'e1_stoch', k, desktop_config(e1{:}, 'explore', true, 'seed', k)}; %#ok<AGROW>
+    end
 end
 
 % Jobs nach Masse sortieren spart Neukompilierungen
@@ -72,7 +80,7 @@ masses = cellfun(@(c) c.base_mass, jobs(:, 3));
 jobs = jobs(order, :);
 
 n = size(jobs, 1);
-fprintf('D1: %d Episoden\n', n);
+fprintf('%s: %d Episoden\n', prefix, n);
 res = cell(n, 1);
 tAll = tic;
 for i = 1:n
@@ -143,8 +151,8 @@ outDir = sk_path('data', 'simulation', 'desktop');
 if ~isfolder(outDir), mkdir(outDir); end
 stamp = char(datetime('now', 'Format', 'yyyyMMdd_HHmmss'));
 if nDraw < 20, stamp = [stamp '_test']; end
-save(fullfile(outDir, ['D1_rates_' stamp '.mat']), 'E', 'S', 'res', 'jobs', 'massFactor', 'ag', '-v7.3');
-writetable(E(:, ~strcmp(E.Properties.VariableNames, 'setgroup')), fullfile(outDir, ['D1_rates_' stamp '_episodes.csv']));
-writetable(S, fullfile(outDir, ['D1_rates_' stamp '_summary.csv']));
-fprintf('Gespeichert: %s (%.1f min)\n', fullfile(outDir, ['D1_rates_' stamp '.*']), toc(tAll) / 60);
+save(fullfile(outDir, [prefix '_' stamp '.mat']), 'E', 'S', 'res', 'jobs', 'massFactor', 'ag', '-v7.3');
+writetable(E(:, ~strcmp(E.Properties.VariableNames, 'setgroup')), fullfile(outDir, [prefix '_' stamp '_episodes.csv']));
+writetable(S, fullfile(outDir, [prefix '_' stamp '_summary.csv']));
+fprintf('Gespeichert: %s (%.1f min)\n', fullfile(outDir, [prefix '_' stamp '.*']), toc(tAll) / 60);
 end
