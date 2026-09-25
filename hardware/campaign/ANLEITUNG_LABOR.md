@@ -9,7 +9,11 @@ Bedingungen selbst in `campaign_plan.m`. Alle Befehle laufen im MATLAB-Command-W
 - [ ] Ethernet direkt zum Gen3 (IP 192.168.0.10)
 - [ ] Repo aktuell: `git pull`, danach muss `git status` sauber sein. Sonst warnen die Skripte
   (`gitDirty`), und die Logs lassen sich keinem Code-Stand zuordnen
-- [ ] MATLAB R2025b öffnen und `setup_project` ausführen
+- [ ] MATLAB R2026a öffnen und `setup_project` ausführen (seit 25.09. auf dem Laptop, die alten Läufe
+  liefen mit R2025b)
+- [ ] Kinova-Supportpaket in R2026a vorhanden: `exist('kortexApiMexInterface')` muss 3 ergeben (MEX-Datei).
+  Supportpakete werden je MATLAB-Version installiert. Sonst über Add-On Explorer „Robotics System Toolbox
+  Support Package for KINOVA Gen3 Manipulators“ installieren
 - [ ] Not-Aus in der Hand, zweite Person im Labor, Arbeitsraum frei
 - [ ] Trockenlauf ohne Roboter: `deploy_tracking_v24('T10_nom', 0, 'dryRun', true)`
 

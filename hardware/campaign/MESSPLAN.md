@@ -26,7 +26,7 @@ Frage 1 entscheidet, ob die Ratendiagnose der Hauptbeitrag des Papers bleibt.
 |---|---|
 | Rechner | Deploy-Laptop HP Pavilion x360 (Intel Core i5-1135G7, 16 GB), Netzbetrieb, Energiesparplan „Höchstleistung“, keine anderen Programme offen |
 | Verbindung | Ethernet direkt zum Gen3, IP 192.168.0.10 |
-| MATLAB | R2025b (Version steht im Log), `setup_project` ausführen |
+| MATLAB | R2026a seit 25.09.2026 (Version steht im Log), `setup_project` ausführen. Die alten Läufe 008–088 liefen mit R2025b, Loop-Zeiten deshalb nur innerhalb der neuen Reihe vergleichen |
 | Code | Stand vorher committen. Der Git-Hash steht in jedem Log, `gitDirty` muss 0 sein |
 | Startpose | Trainingspose (Nullstellung). Das Skript fährt sie per `ReachJointAngles` an und bricht ab, wenn der Endeffektor mehr als 2 cm von der Referenz entfernt ist |
 | Referenz | Halbkreis, r = 0,2 m, x-z-Ebene, Start [0, −0,025, 1,687] m, Wandzeit (`referenceTiming = 'wall'`) |
